@@ -1,6 +1,8 @@
 ---
 title: "HW1_HillT"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -163,7 +165,7 @@ sd(baseball_df$TARGET_WINS)
 
 
 
-```{r, training-vs-eval-wins}
+```{r, training-vs-eval-wins2}
 
 
 eval_predict2 <- predict(baseball_lm2, newdata = baseball_eval)
