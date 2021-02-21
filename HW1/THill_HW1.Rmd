@@ -1,0 +1,187 @@
+---
+title: "HW1_HillT"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r, load-libraries}
+
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(reshape2)
+library(purrr)
+library(tidyr)
+
+```
+
+### Loading the initial data
+
+
+
+```{r, load-training-data}
+
+baseball_df <- read.csv('moneyball-training-data.csv')
+
+head(baseball_df)
+
+```
+
+
+### Feature Boxplots and Histograms
+
+```{r, baseball-graphs}
+
+
+baseball_df %>%
+  keep(is.numeric) %>%
+  gather() %>% 
+  ggplot(aes(value)) +
+    facet_wrap(~ key, scales = "free") +
+    geom_boxplot()
+
+
+baseball_df %>%
+  keep(is.numeric) %>%
+  gather() %>% 
+  ggplot(aes(value)) +
+    facet_wrap(~ key, scales = "free") +
+    geom_histogram()
+
+```
+
+### Summary Statistics
+
+```{r, baseball-summary}
+
+summary(baseball_df)
+
+```
+
+```{r, missing-values}
+
+
+
+colSums(is.na(baseball_df))
+
+
+```
+### Fitting a Linear Model
+
+
+My first change to the data was to eliminate the index and two problem variables with many misisng variables: when batters are hit by pitch or caught stealing.
+
+```{r, baseball-lm}
+
+baseball_df_fix <- subset(baseball_df, select = -c(TEAM_BATTING_HBP,TEAM_BASERUN_CS, INDEX))
+
+baseball_lm <- lm(baseball_df_fix, formula = TARGET_WINS ~  TEAM_PITCHING_H + TEAM_PITCHING_HR + TEAM_FIELDING_DP + TEAM_BATTING_3B + TEAM_BATTING_H:TEAM_BATTING_HR + TEAM_BATTING_2B:TEAM_BATTING_HR+ log(TEAM_FIELDING_E) + log(TEAM_PITCHING_BB) + log(TEAM_PITCHING_SO) + log(TEAM_BASERUN_SB))
+
+summary(baseball_lm)
+```
+
+
+Next, I considered looking at interactions between total hits and singles, doubles, triples, and home runs.
+
+``` {r, baseball-with-interactions}
+baseball_interactions <- lm(baseball_df_fix, formula = TARGET_WINS ~ (TEAM_BATTING_H * TEAM_BATTING_2B + TEAM_BATTING_H * TEAM_BATTING_3B + TEAM_BATTING_H * TEAM_BATTING_HR))
+
+summary(baseball_interactions)
+
+```
+
+
+In the histograms above, I noticed some of the data was bimodal in some cases. I approximated some dummy variables to see if they added to the linear model. This part ended up being a dead end and I'll instead use the Box-Cox method to transform these variables later in the week.
+
+
+```{r, dummy-vars-bimodal}
+
+baseball_dummies <- baseball_df_fix %>%
+  mutate(TEAM_PITCHING_HR_70 = case_when(TEAM_PITCHING_HR <= 70 ~ 1, TEAM_PITCHING_HR > 70 ~ 0)) %>%
+  mutate(TEAM_BATTING_SO_750 = case_when(TEAM_BATTING_SO  > 750 ~ 1, (TEAM_BATTING_SO  <= 750 | is.na(TEAM_BATTING_SO)) ~ 0)) %>%
+  mutate(TEAM_BATTING_HR_60 = case_when(TEAM_BATTING_HR  > 60 ~ 1, TEAM_BATTING_HR  <= 60 ~ 0))
+
+
+```
+
+
+
+
+### Final Model using all Training Ddata
+
+For my final model I considered, I originally modeled all of the dummy variables but they ended up not contributing anything to the model. This final model eliminates several features altogether, transforms three, and considers four different interaction effects.
+
+```{r, final-lm}
+
+baseball_lm2 <- lm(baseball_df_fix, formula = TARGET_WINS ~. +log(TEAM_FIELDING_E) +log(TEAM_PITCHING_SO) + log(TEAM_BASERUN_SB) + TEAM_BATTING_3B:TEAM_BATTING_HR + TEAM_BATTING_2B:TEAM_BATTING_HR +  TEAM_BATTING_H:TEAM_BATTING_HR + TEAM_BATTING_H:TEAM_BATTING_3B- TEAM_BATTING_3B - TEAM_BATTING_SO - TEAM_BATTING_2B-TEAM_BATTING_BB-TEAM_BATTING_HR-TEAM_BATTING_H-TEAM_BATTING_HR- TEAM_PITCHING_HR)
+
+
+summary(baseball_lm2)
+
+```
+
+The R-squared statistic indicates that this model predicts less than half of the variation in wins with the included features. For a next step, I hope to use cross-validation techniques to split the training data further and allow me to compare RMSE of various models.
+
+
+### Evaluation Data
+
+I also loaded the evaluation data and predicted the wins using my final model. Since the actual wins are withheld, I compared the distribution of predictions to the actual wins in the training set. The means were similar but the training data included much more variation between teams. It's also worth mentioning as well that using the predict function creates missing values as the evaluation data is missing. In fact, for TEAM_BATTING_HBP, over 90% of rows are missing entries.
+
+
+```{r, predict-against-eval-data}
+
+baseball_eval <- read.csv('moneyball-evaluation-data.csv')
+
+colSums(is.na(baseball_eval))
+
+baseball_vars <- baseball_eval %>%
+  select(TEAM_PITCHING_H, TEAM_PITCHING_HR, TEAM_FIELDING_DP, TEAM_BATTING_3B, TEAM_FIELDING_E, TEAM_PITCHING_BB, TEAM_PITCHING_SO, TEAM_BASERUN_SB, TEAM_BATTING_H, TEAM_BATTING_HR, TEAM_BATTING_2B)
+
+eval_predict <- predict(baseball_interactions, newdata = baseball_eval)
+
+
+
+
+```
+
+
+```{r, training-vs-eval-wins}
+
+hist(baseball_df$TARGET_WINS)
+hist(eval_predict)
+
+summary(eval_predict)
+sd(eval_predict)
+summary(baseball_df$TARGET_WINS)
+sd(baseball_df$TARGET_WINS)
+```
+
+
+
+```{r, training-vs-eval-wins}
+
+
+eval_predict2 <- predict(baseball_lm2, newdata = baseball_eval)
+
+hist(baseball_df$TARGET_WINS, breaks = 40)
+hist(eval_predict2)
+
+summary(eval_predict2)
+sd(eval_predict2, na.rm = T)
+
+n_test <-nrow(baseball_eval)
+n_train <- nrow(baseball_df)
+
+summary(baseball_df$TARGET_WINS)
+sd(baseball_df$TARGET_WINS)
+
+
+
+```
+
+
