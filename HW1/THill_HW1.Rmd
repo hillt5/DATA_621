@@ -1,6 +1,7 @@
 ---
 title: "HW1_HillT"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 ---
@@ -19,6 +20,8 @@ library(readr)
 library(reshape2)
 library(purrr)
 library(tidyr)
+library(corrplot)
+library(MASS)
 
 ```
 
@@ -29,6 +32,7 @@ library(tidyr)
 ```{r, load-training-data}
 
 baseball_df <- read.csv('moneyball-training-data.csv')
+baseball_eval <- read.csv('moneyball-evaluation-data.csv')
 
 head(baseball_df)
 
@@ -57,38 +61,273 @@ baseball_df %>%
 
 ```
 
+Based on this quick look of boxplots and histograms, there are several variables with skewed distributions that would benefit from transformation. Addiitonally, there are a few variables with bimodal distributions.
+
 ### Summary Statistics
+
 
 ```{r, baseball-summary}
 
 summary(baseball_df)
+print('Number of observations:') 
+nrow(baseball_df)
+print('Observations per year, 1871 - 2006:') 
+round(nrow(baseball_df)/(2006-1871),2)
+```
+
+Some columns have maximum values that are clearly outliers, like TEAM_PITCHING_H AND TEAM_PITCHING_HR. The assignment mentions that some of the season records were adjusted to match the performance during a 162-game season. There are 2276 seasons in the training set. Observations span 128 years, with an average of 17 teams playing per year. Based on a quick Google search, there were initially 8 teams in the MLB, and 30 teams in 2006. The MLB has two leagues of the same size since 1901, with the league sizes increasing in the late 20th century.  
+
+```{r, corrplot}
+
+corrplot(cor(baseball_df[,2:17], use = 'complete.obs'))
 
 ```
+
+Looking at the correlation plots, there appear to be several strong correlations between explanatory variables.
+
+
+### Missing values
 
 ```{r, missing-values}
 
 
-
-colSums(is.na(baseball_df))
+round(100*colSums(is.na(baseball_df))/nrow(baseball_df),2)
 
 
 ```
+
+In terms of missing values, there are two variables missing many obserations. TEAM_BATTING_HBP is missing over 90% of its values, while TEAM_BASERUN_CS is missing just around 30%. Since so many observations are missing, imputing values could change the distributions considerably. To retain as many features as possible, I think it makes sense to explore these two variables first. The other affected missing values only have 5-10% misisng values. None of these appear to be stand-ins for 'zero' values, so mean values can be used insead.
+
+
+I'll start by looking at TEAM_BATTING_HBP.
+
+
+```{r, separate-hbp-df}
+
+baseball_no_hbp <- baseball_df %>%    
+  filter(is.na(TEAM_BATTING_HBP)) %>% #missing values for hbp
+  select(-TEAM_BATTING_HBP)  ## select all rows except hbp
+
+
+
+baseball_hbp <- baseball_df %>%
+  filter(!is.na(TEAM_BATTING_HBP)) #not missing values for hbp
+
+```
+
+I separated training data into two smaller dataframes, one with complete values for HBP and one omitting this variable.
+
+
+```{r, cor-hbp-only}
+
+corrplot(cor(baseball_df[,2:17], use = 'complete.obs')) 
+
+corrplot(cor(baseball_hbp[,2:17], use = 'complete.obs'))
+
+```
+
+When HBP has values, it appears that there are no major changes in correlations.
+
+```{r, cor-no-hbp}
+
+corrplot(cor(baseball_df[,-c(1,11)], use = 'complete.obs'))  #all rows
+
+corrplot(cor(baseball_no_hbp[,2:16], use = 'complete.obs')) #only rows  missing values for hbp
+
+
+corrplot(cor(baseball_hbp[,-c(1,11)], use = 'complete.obs')) #only rows with values for hbp 
+
+```
+
+
+There are three new correlaton plots being considered: the first is all datapoints, then a plot with missing hbp values, and finally a plot for rows with hbp values same as the previous pair.  There appear to be no major discrepancies between missing values and the overall set. However, comparing missing values to available values does illustrate there are some distinct changes correlation when the hbp was recorded. This may be because HBP only represents only a small proportion of entries and has more variation. However, there also appear to be stronger correlations when HBP is added, which may help predict wins better than omitting altogether.
+
+
+```{r, hbp-lm}
+
+hbp_lm <- lm(baseball_hbp, formula = TARGET_WINS ~.-INDEX-TEAM_BATTING_HBP-TEAM_BATTING_SO-TEAM_BATTING_HR-TEAM_BASERUN_CS-TEAM_BATTING_H-TEAM_BASERUN_SB-TEAM_PITCHING_BB-TEAM_BATTING_2B-TEAM_BATTING_3B)
+
+
+summary(hbp_lm)
+
+baseball_hbp_dummy <- baseball_df %>%
+  mutate(TEAM_HBP_YES_NO = case_when(!is.na(TEAM_BATTING_HBP) ~ 1, is.na(TEAM_BATTING_HBP) ~ 0)) %>%
+  select(-TEAM_BATTING_HBP)
+
+
+summary(lm(baseball_hbp_dummy, formula = TARGET_WINS ~.-INDEX-TEAM_PITCHING_BB-TEAM_PITCHING_HR-TEAM_BATTING_H))
+
+
+```
+
+I compared two preliminary linear models that I arrived at through backward selection. Looking only at HBP-containing observations, there's a small increase in r-squared compared to a model that uses a dummy variable to consider whether values were available.
+
+
+Next, I'll look at TEAM_BASERUN_CS, which was missing about 30% of its values.
+
+
+```{r, cs-missing-values}
+
+
+sum(baseball_df$TEAM_BASERUN_CS == 0, na.rm = TRUE)
+
+
+hist(baseball_df$TEAM_BASERUN_CS, breaks = 30)
+
+
+baseball_no_cs <- baseball_df %>%    
+  filter(is.na(TEAM_BASERUN_CS)) %>% #missing values for hbp
+  select(-TEAM_BASERUN_CS)  ## select all rows except hbp
+
+
+
+baseball_cs <- baseball_df %>%
+  filter(!is.na(TEAM_BASERUN_CS)) #not missing values for hbp
+
+```
+
+Same as HBP, it appears CS did not miscode values of 0 as NA. I'm going to separate the dataset in the same way as HBP to see if there are differences in its distribution and correlation plots.
+
+```{r, cs-distributions}
+
+
+baseball_df %>% ##original histograms
+  select(-TEAM_BASERUN_CS) %>%
+  keep(is.numeric) %>%
+  gather() %>% 
+  ggplot(aes(value)) +
+    facet_wrap(~ key, scales = "free") +
+    geom_histogram()
+
+
+
+baseball_cs %>% ##historgrams with seasons having CS statistics
+  select(-TEAM_BASERUN_CS) %>%
+  keep(is.numeric) %>%
+  gather() %>% 
+  ggplot(aes(value)) +
+    facet_wrap(~ key, scales = "free") +
+    geom_histogram()
+
+
+
+
+baseball_no_cs %>% #histograms missing CS statistics
+  keep(is.numeric) %>%
+  gather() %>% 
+  ggplot(aes(value)) +
+    facet_wrap(~ key, scales = "free") +
+    geom_histogram()
+
+
+```
+
+After subsetting for availability of CS statistics, an interesting pattern emerges: our three bimodal variables, TEAM_PITCHING_HR, TEAM_BATTING_SO, and TEAM_BATTING_HR, are no longer bimodal.
+
+
+
+```{r, compare-pitching-hr}
+
+baseball_hbp_dummy <- baseball_hbp_dummy %>%
+  mutate(TEAM_CS_YES_NO = case_when(!is.na(TEAM_BASERUN_CS) ~ '1', is.na(TEAM_BASERUN_CS) ~ '0')) 
+
+ggplot(baseball_hbp_dummy, aes(x = TEAM_PITCHING_HR, fill = TEAM_CS_YES_NO)) +
+  geom_histogram() +
+  theme(legend.position = 'none')
+
+ggplot(baseball_df, aes(x = TEAM_PITCHING_HR)) +
+  geom_histogram()
+
+```
+
+```{r, compare-batting-hr}
+
+
+ggplot(baseball_hbp_dummy, aes(x = TEAM_BATTING_HR, fill = TEAM_CS_YES_NO)) +
+  geom_histogram() +
+  theme(legend.position = 'none')
+
+ggplot(baseball_df, aes(x = TEAM_BATTING_HR)) +
+  geom_histogram()
+
+```
+
+```{r, compare-batting-so}
+
+
+ggplot(baseball_hbp_dummy, aes(x = TEAM_BATTING_SO, fill = TEAM_CS_YES_NO)) +
+  geom_histogram() +
+  theme(legend.position = 'none')
+
+ggplot(baseball_df, aes(x = TEAM_BATTING_SO)) +
+  geom_histogram()
+
+```
+
+As these three histograms illustrate, the bimodal distributions are explained by missing CS values or not. Missing values explain both modes present in the overall histogram.
+
+
 ### Fitting a Linear Model
 
 
-My first change to the data was to eliminate the index and two problem variables with many misisng variables: when batters are hit by pitch or caught stealing.
+My first change to the data was to eliminate the index and, replace HBP and BASERUN_CS with dummy variables.
 
 ```{r, baseball-lm}
 
-baseball_df_fix <- subset(baseball_df, select = -c(TEAM_BATTING_HBP,TEAM_BASERUN_CS, INDEX))
+baseball_df_fix <- baseball_df %>%
+  mutate(TEAM_CS_YES_NO = case_when(!is.na(TEAM_BASERUN_CS) ~ 1, is.na(TEAM_BASERUN_CS) ~ 0)) %>% 
+  mutate(TEAM_HBP_YES_NO = case_when(!is.na(TEAM_BATTING_HBP) ~ 1, is.na(TEAM_BATTING_HBP) ~ 0)) %>%
+  select(-c(TEAM_BATTING_HBP, INDEX, TEAM_BASERUN_CS))
 
-baseball_lm <- lm(baseball_df_fix, formula = TARGET_WINS ~  TEAM_PITCHING_H + TEAM_PITCHING_HR + TEAM_FIELDING_DP + TEAM_BATTING_3B + TEAM_BATTING_H:TEAM_BATTING_HR + TEAM_BATTING_2B:TEAM_BATTING_HR+ log(TEAM_FIELDING_E) + log(TEAM_PITCHING_BB) + log(TEAM_PITCHING_SO) + log(TEAM_BASERUN_SB))
+baseball_lm <- lm(baseball_df_fix, formula = TARGET_WINS ~.)
 
 summary(baseball_lm)
 ```
 
+The initial linear model explains 41% of variation. Next, I'll add some log transformations of skewed columns: TEAM_PITCHING_BB, TEAM_PITCHING_SO, TEAM_BASERUN_SB, and TEAM_FIELDING_E.
 
-Next, I considered looking at interactions between total hits and singles, doubles, triples, and home runs.
+
+
+```{r, baseball-log-lm}
+
+
+baseball_log_lm <- lm(baseball_df_fix, formula = TARGET_WINS ~.+log(TEAM_FIELDING_E) + log(TEAM_PITCHING_BB) + log(TEAM_PITCHING_SO) + log(TEAM_BASERUN_SB))
+
+summary(baseball_log_lm)
+```
+
+This model explains more variation, but the F-statistic decreased relative to the original model. Next, I'm going to add a few features I'm curious about. TEAM_BATTING_H considers all base hits, including 2B, 3B,and HR. I will create a new variable only looking at singles called TEAM_BATTING_1B. Related to this, I will also incorporate an approximation of an important baseball statistic, slugging. Because some base hits convert to runs at different rates, slugging weighs, singles, doubles, triples and home runs with increasing weight. Usually, slugging also has a denominator of at-bats, which is unavailable in this dataset. Instead, I'll approximate this by dividing by the number of hits. The weights I'm assigning are proportional to the number of bases, so 1 for single, 2 for double... 4 for HR.
+
+
+```{r, baseball-new-vars-lm}
+
+baseball_df_fix <- baseball_df_fix %>%
+  mutate(TEAM_BATTING_1B = TEAM_BATTING_H - TEAM_BATTING_2B - TEAM_BATTING_3B - TEAM_BATTING_HR) %>% 
+  mutate(TEAM_BATTING_SLG = (TEAM_BATTING_H + TEAM_BATTING_2B + 2 * TEAM_BATTING_3B + 3 *TEAM_BATTING_HR)/TEAM_BATTING_H) ## direct calculation of SLG from TEAM_BATTING_H, which contains 1B + 2B + 3B + Hr
+
+
+baseball_vars_lm <- lm(baseball_df_fix, formula = TARGET_WINS ~.+log(TEAM_FIELDING_E) + log(TEAM_PITCHING_BB) + log(TEAM_PITCHING_SO) + log(TEAM_BASERUN_SB))
+
+summary(baseball_vars_lm)
+```
+
+Neither of these features offered additional significance. Finally, I'll use back-selection to eliminate non-contributing variables.
+
+
+```{r, baseball-lm-back-selection}
+
+
+baseball_back_lm <- lm(baseball_df_fix, formula = TARGET_WINS ~.-TEAM_BATTING_1B+log(TEAM_FIELDING_E) + log(TEAM_PITCHING_BB) + log(TEAM_PITCHING_SO) + log(TEAM_BASERUN_SB)-TEAM_BATTING_SLG-TEAM_PITCHING_H-TEAM_BATTING_BB-TEAM_BATTING_SO-TEAM_PITCHING_HR-TEAM_PITCHING_BB-TEAM_FIELDING_E)
+
+summary(baseball_back_lm)
+
+
+```
+
+
+### Final Model using all Training Ddata
+
+For my final model I considered, I originally modeled all of the dummy variables but they ended up not contributing anything to the model. This final model eliminates several features altogether, transforms three, and considers four different interaction effects.
 
 ``` {r, baseball-with-interactions}
 baseball_interactions <- lm(baseball_df_fix, formula = TARGET_WINS ~ (TEAM_BATTING_H * TEAM_BATTING_2B + TEAM_BATTING_H * TEAM_BATTING_3B + TEAM_BATTING_H * TEAM_BATTING_HR))
@@ -97,26 +336,6 @@ summary(baseball_interactions)
 
 ```
 
-
-In the histograms above, I noticed some of the data was bimodal in some cases. I approximated some dummy variables to see if they added to the linear model. This part ended up being a dead end and I'll instead use the Box-Cox method to transform these variables later in the week.
-
-
-```{r, dummy-vars-bimodal}
-
-baseball_dummies <- baseball_df_fix %>%
-  mutate(TEAM_PITCHING_HR_70 = case_when(TEAM_PITCHING_HR <= 70 ~ 1, TEAM_PITCHING_HR > 70 ~ 0)) %>%
-  mutate(TEAM_BATTING_SO_750 = case_when(TEAM_BATTING_SO  > 750 ~ 1, (TEAM_BATTING_SO  <= 750 | is.na(TEAM_BATTING_SO)) ~ 0)) %>%
-  mutate(TEAM_BATTING_HR_60 = case_when(TEAM_BATTING_HR  > 60 ~ 1, TEAM_BATTING_HR  <= 60 ~ 0))
-
-
-```
-
-
-
-
-### Final Model using all Training Ddata
-
-For my final model I considered, I originally modeled all of the dummy variables but they ended up not contributing anything to the model. This final model eliminates several features altogether, transforms three, and considers four different interaction effects.
 
 ```{r, final-lm}
 
@@ -129,6 +348,13 @@ summary(baseball_lm2)
 
 The R-squared statistic indicates that this model predicts less than half of the variation in wins with the included features. For a next step, I hope to use cross-validation techniques to split the training data further and allow me to compare RMSE of various models.
 
+```{r,}
+
+
+
+
+```
+
 
 ### Evaluation Data
 
@@ -136,8 +362,6 @@ I also loaded the evaluation data and predicted the wins using my final model. S
 
 
 ```{r, predict-against-eval-data}
-
-baseball_eval <- read.csv('moneyball-evaluation-data.csv')
 
 colSums(is.na(baseball_eval))
 
