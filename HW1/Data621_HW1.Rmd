@@ -16,12 +16,38 @@ output:
 ```{r include=TRUE, message=FALSE, warning=FALSE}
 library(dplyr)
 library(DataExplorer)
+library(GGally)
 ```
 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+## Data Overview
+The data set contains approximately 2200 records. Each record represents a professional baseball team from the years 1871 to 2006 inclusive. Each record has the performance of the team for the given year, with all of the statistics adjusted to match the performance of a 162 game season.Below is a short description of the variables
+
+* INDEX 				    - Identification Variable
+* TARGET_WINS       - Number of wins
+* TEAM_BATTING_H		- Base Hits by batters (1B,2B,3B,HR)
+* TEAM_BATTING_2B		- Doubles by batters (2B)
+* TEAM_BATTING_3B		- Triples by batters (3B)
+* TEAM_BATTING_HR		- Homeruns by batters (4B)
+* TEAM_BATTING_BB		- Walks by batters 
+* TEAM_BATTING_HBP	- Batters hit by pitch (get a free base) 
+* TEAM_BATTING_SO		- Strikeouts by batters 
+* TEAM_BASERUN_SB		- Stolen bases 
+* TEAM_BASERUN_CS		- Caught stealing 
+* TEAM_FIELDING_E		- Errors 
+* TEAM_FIELDING_DP	- Double Plays 
+* TEAM_PITCHING_BB	- Walks allowed 
+* TEAM_PITCHING_H		- Hits allowed 
+* TEAM_PITCHING_HR	- Homeruns allowed 
+* TEAM_PITCHING_SO	- Strikeouts by pitchers 
+
+## Objective
+To build a multiple linear regression model on the training data to predict the number of wins for the team.
+
 
 
 ## Data Exploration
@@ -57,6 +83,15 @@ summary(moneyball)
 ```
 
 
+
+```{r}
+# check NAs in columns
+colSums(is.na(moneyball))
+```
+
+
+
+
 ```{r}
 # distribution
 plot_histogram(moneyball)
@@ -66,6 +101,22 @@ plot_histogram(moneyball)
 # against the response variable
 plot_scatterplot(moneyball, by = "TARGET_WINS")
 ```
+
+
+```{r}
+# boxplot for train dataset
+plot_boxplot(moneyball, by="TARGET_WINS")
+```
+
+
+```{r}
+# correlation
+moneyball %>% 
+  ggcorr(size =3, hjust=1.0)
+```
+
+
+
 
 
 ## Data Preparation
