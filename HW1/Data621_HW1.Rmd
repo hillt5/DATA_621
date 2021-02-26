@@ -1,0 +1,83 @@
+---
+title: "Data621 - HW1"
+author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
+date: "2/26/2021"
+output:
+  html_document:
+    highlight: pygments
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+---
+
+```{r include=TRUE, message=FALSE, warning=FALSE}
+library(dplyr)
+library(DataExplorer)
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Data Exploration
+
+```{r read-csv}
+# read data
+moneyball <- read.csv("https://raw.githubusercontent.com/hillt5/DATA_621/master/HW1/moneyball-training-data.csv", header=TRUE)
+head(moneyball)
+```
+
+```{r}
+# dimension
+dim(moneyball)
+```
+
+There are 2276 rows and 17 columns in the dataset.
+
+```{r}
+# glimpse of data
+glimpse(moneyball)
+```
+
+
+```{r}
+# removing index
+moneyball <- moneyball %>% dplyr::select(-INDEX)
+```
+
+
+```{r}
+# data summary
+summary(moneyball)
+```
+
+
+```{r}
+# distribution
+plot_histogram(moneyball)
+```
+
+```{r}
+# against the response variable
+plot_scatterplot(moneyball, by = "TARGET_WINS")
+```
+
+
+## Data Preparation
+
+## Build Models
+
+## Select Models
+
+
+
+
+
+
+
+
