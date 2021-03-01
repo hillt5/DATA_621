@@ -24,6 +24,7 @@ library(purrr)
 library(tidyr)
 library(corrplot)
 library(MASS)
+library(caret)
 ```
 
 
@@ -275,6 +276,9 @@ After subsetting for availability of CS statistics, an interesting pattern emerg
 
 
 
+
+
+
 ```{r, compare-pitching-hr}
 
 baseball_hbp_dummy <- baseball_hbp_dummy %>%
@@ -314,6 +318,92 @@ ggplot(baseball_df, aes(x = TEAM_BATTING_SO)) +
 ```
 
 As these three histograms illustrate, the bimodal distributions are explained by missing CS values or not. Missing values explain both modes present in the overall histogram.
+
+
+
+```{r, missing-values-visualization}
+
+image(is.na(baseball_df_fix),axes=FALSE,col=gray(1:0))
+axis(2, at=0:17/17, labels=colnames(baseball_df_fix))
+axis(1, at=0:2275/2275, labels=row.names(baseball_df_fix),las=2)
+
+```
+
+To better visualize the missing values, it looks like two of them overlap perfectly.
+
+
+```{r, overlap-na}
+
+baseball_df_fix[rowSums(is.na(baseball_df_fix)) > 0,] %>%
+  dplyr::select(TEAM_PITCHING_SO, TEAM_FIELDING_DP, TEAM_BATTING_SO, TEAM_BASERUN_SB)
+
+
+
+
+summary( lm(baseball_df_fix, formula = TEAM_BATTING_SO ~.-TARGET_WINS))
+summary( lm(baseball_df_fix, formula = TEAM_PITCHING_SO ~.-TARGET_WINS))
+
+```
+
+It appears that TEAM_PITCHING_SO and TEAM_BATTING_SO are missing all of the same rows. By quickly running a linear model for either column shows that it's possible to approximate values from other season records.
+
+
+```{R, zero-values}
+
+baseball_df%>%
+  dplyr::filter(TEAM_PITCHING_SO < 5)
+
+baseball_df%>%
+  dplyr::filter(TEAM_BATTING_SO < 5)
+
+
+```
+Lookin closer at these two variables, there are also some values that may be omitted if they are implausibly small. Going a whole season with zero strikeouts, pitching or batting, seems unlikely. It may make sense to recode these as NA and impute values onto them.
+
+
+```{r, overlap-sb-cs}
+
+baseball_df %>%
+  dplyr::select(TEAM_BASERUN_CS, TEAM_BASERUN_SB) %>%
+  filter(is.na(TEAM_BASERUN_SB))
+
+
+hist(baseball_df$TEAM_BASERUN_SB)
+
+hist(log(baseball_df$TEAM_BASERUN_SB))
+
+baseball_log_sb <- baseball_df %>%
+  filter(!is.na(TEAM_BASERUN_SB)) %>%
+  filter(TEAM_BASERUN_SB != 0) %>%
+  mutate(LOG_BASERUN_SB = log(TEAM_BASERUN_SB))
+
+
+
+qqnorm((baseball_log_sb$LOG_BASERUN_SB))
+qqline((baseball_log_sb$LOG_BASERUN_SB))
+```
+
+The column TEAM_BASERUN_SB is partly correlated with TEAM_BASERUN_CS in the training set. However, there are many misisng values so single imputation may not be an option. In this case, TEAM_BASERUN_SB may qualify for multiple imputation after log transform to make it normally distributed.
+
+
+```{r, fielding-dp-na}
+
+baseball_df_fix %>%
+  filter(is.na(TEAM_FIELDING_DP))
+
+baseball_df_na_dp <- baseball_df_fix %>%
+  filter(!is.na(TEAM_FIELDING_DP))
+
+summary(lm(baseball_df_na_dp, formula = TEAM_FIELDING_DP~.-TARGET_WINS))
+
+corrplot(cor(baseball_df_na_dp, use = 'complete.obs'))
+
+hist(baseball_df$TEAM_FIELDING_DP)
+
+qqnorm(baseball_df$TEAM_FIELDING_DP)
+qqline(baseball_df$TEAM_FIELDING_DP)
+
+```
 
 
 ## Fitting a Linear Model
@@ -374,7 +464,7 @@ summary(baseball_back_lm)
 ```
 
 
-## Final Model using all Training Ddata
+## Final Model using all Training Data
 
 For my final model I considered, I originally modeled all of the dummy variables but they ended up not contributing anything to the model. This final model eliminates several features altogether, transforms three, and considers four different interaction effects.
 
@@ -388,7 +478,7 @@ summary(baseball_interactions)
 
 ```{r, final-lm}
 
-baseball_lm2 <- lm(baseball_df_fix, formula = TARGET_WINS ~. +log(TEAM_FIELDING_E) +log(TEAM_PITCHING_SO) + log(TEAM_BASERUN_SB) + TEAM_BATTING_3B:TEAM_BATTING_HR + TEAM_BATTING_2B:TEAM_BATTING_HR +  TEAM_BATTING_H:TEAM_BATTING_HR + TEAM_BATTING_H:TEAM_BATTING_3B- TEAM_BATTING_3B - TEAM_BATTING_SO - TEAM_BATTING_2B-TEAM_BATTING_BB-TEAM_BATTING_HR-TEAM_BATTING_H-TEAM_BATTING_HR- TEAM_PITCHING_HR)
+baseball_lm2 <- lm(baseball_df_fix, formula = TARGET_WINS ~.-TEAM_BATTING_1B+log(TEAM_FIELDING_E) + log(TEAM_PITCHING_BB) + log(TEAM_PITCHING_SO)- TEAM_BATTING_SLG-TEAM_PITCHING_H-TEAM_BATTING_BB-TEAM_BATTING_SO-TEAM_PITCHING_HR-TEAM_PITCHING_BB-TEAM_FIELDING_E+log(TEAM_FIELDING_E) +log(TEAM_PITCHING_SO) + TEAM_BATTING_3B:TEAM_BATTING_HR + TEAM_BATTING_2B:TEAM_BATTING_HR +  TEAM_BATTING_H:TEAM_BATTING_HR + TEAM_BATTING_H:TEAM_BATTING_3B- TEAM_BATTING_3B - TEAM_BATTING_SO - TEAM_BATTING_2B-TEAM_BATTING_BB-TEAM_BATTING_HR-TEAM_BATTING_H-TEAM_BATTING_HR- TEAM_PITCHING_HR)
 
 
 summary(baseball_lm2)
@@ -397,10 +487,14 @@ summary(baseball_lm2)
 
 The R-squared statistic indicates that this model predicts less than half of the variation in wins with the included features. For a next step, I hope to use cross-validation techniques to split the training data further and allow me to compare RMSE of various models.
 
-```{r,}
+```{r, caret-cross-validation}
+#Tom - still working on this
+#set.seed(123)
+
+#baseball_cv <- 
 
 
-
+#cv_model <- train(TARGET_WINS ~ ., baseball_df_fix, method = 'lm', trControl = trainControl(method = 'cv', number = 5))
 
 ```
 
@@ -410,9 +504,17 @@ The R-squared statistic indicates that this model predicts less than half of the
 I also loaded the evaluation data and predicted the wins using my final model. Since the actual wins are withheld, I compared the distribution of predictions to the actual wins in the training set. The means were similar but the training data included much more variation between teams. It's also worth mentioning as well that using the predict function creates missing values as the evaluation data is missing. In fact, for TEAM_BATTING_HBP, over 90% of rows are missing entries.
 
 
-```{r, predict-against-eval-data}
+```{r, eval-data-missing}
 
-colSums(is.na(baseball_eval))
+round(100*colSums(is.na(baseball_eval))/nrow(baseball_eval),2)
+
+
+```
+
+The prediction data also has missing values, which are approximately the same as the training data. 
+
+
+```{r, predict-against-eval-data}
 
 baseball_vars <- baseball_eval %>%
   dplyr::select(TEAM_PITCHING_H, TEAM_PITCHING_HR, TEAM_FIELDING_DP, TEAM_BATTING_3B, TEAM_FIELDING_E, TEAM_PITCHING_BB, TEAM_PITCHING_SO, TEAM_BASERUN_SB, TEAM_BATTING_H, TEAM_BATTING_HR, TEAM_BATTING_2B)
@@ -436,29 +538,35 @@ summary(baseball_df$TARGET_WINS)
 sd(baseball_df$TARGET_WINS)
 ```
 
+```{r, eval-add-new-vars} 
 
-
-```{r, training-vs-eval-wins2}
-
-#Devin - Hitting an error so commented out for now
-#eval_predict2 <- predict(baseball_lm2, newdata = baseball_eval)
-
-#hist(baseball_df$TARGET_WINS, breaks = 40)
-#hist(eval_predict2)
-
-#summary(eval_predict2)
-#sd(eval_predict2, na.rm = T)
-
-#n_test <-nrow(baseball_eval)
-#n_train <- nrow(baseball_df)
-
-#summary(baseball_df$TARGET_WINS)
-#sd(baseball_df$TARGET_WINS)
-
+baseball_eval <- baseball_eval %>% ##added new features to eval data so predict could run
+  mutate(TEAM_CS_YES_NO = case_when(!is.na(TEAM_BASERUN_CS) ~ 1, is.na(TEAM_BASERUN_CS) ~ 0)) %>% 
+  mutate(TEAM_HBP_YES_NO = case_when(!is.na(TEAM_BATTING_HBP) ~ 1, is.na(TEAM_BATTING_HBP) ~ 0))  %>%
+  mutate(TEAM_BATTING_1B = TEAM_BATTING_H - TEAM_BATTING_2B - TEAM_BATTING_3B - TEAM_BATTING_HR) %>% 
+  mutate(TEAM_BATTING_SLG = (TEAM_BATTING_H + TEAM_BATTING_2B + 2 * TEAM_BATTING_3B + 3 *TEAM_BATTING_HR)/TEAM_BATTING_H) ## direct calculation of SLG from TEAM_BATTING_H, which contains 1B + 2B + 3B + Hr
 
 
 ```
 
 
+```{r, training-vs-eval-wins2}
 
 
+eval_predict2 <- predict(baseball_lm2, newdata = baseball_eval)
+
+hist(baseball_df$TARGET_WINS, breaks = 40)
+hist(eval_predict2)
+
+summary(eval_predict2)
+sd(eval_predict2, na.rm = T)
+
+n_test <-nrow(baseball_eval)
+n_train <- nrow(baseball_df)
+
+summary(baseball_df$TARGET_WINS)
+sd(baseball_df$TARGET_WINS)
+
+
+
+```
