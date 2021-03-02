@@ -505,19 +505,7 @@ Before moving to the final model, I want to try creating a simple model with few
 
 From there I removed multiple predictors at once.  To do this we need to construct a null hypothesis test which states that removing the variables doesn't make a better model.  We construct a F-test and compare both versions of the model.  If the p-value is under 0.05 we reject the null hypothesis, which indicates our new model isn't different than the first model.  If the p-value is greater than 0.05, the model isn't better with those variables, so I will remove them.  The simpler the model the better.  
   
-To determine which variables I removed, I chose the variable that was not proving to be significant in the linear regression (where the p-value was greater than 0.05).  While this doesn't mean the variable itself isn't signficiant, it means the variable alongside the other combination of variables in the model is not significant.    
-
-*Steps:*
-  * Remove TEAM_PITCHING_BB
-  *
-  
-  
-  * TEAM_PITCHING_BB & TEAM_BATTING_BB
-  * TEAM_PITCHING_SO & TEAM_BATTING_SO
-  * TEAM_PITCHING_HR & TEAM_BATTING_HR
-  * TEAM_PTICHING_H & TEAM_BATTING_H
-
-
+To determine which variables I removed, I chose the variable that was not proving to be significant in the linear regression (where the p-value was greater than 0.05).  While this doesn't mean the variable itself isn't signficiant, it means the variable alongside the other combination of variables in the model is not significant.   
 *Steps:*
   * Remove TEAM_PITCHING_BB & TEAM_PITCHING_SO
 ```{r model-selection}
