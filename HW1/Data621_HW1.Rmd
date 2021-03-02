@@ -3,14 +3,14 @@ title: "Data621 - HW1"
 author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
 date: "2/26/2021"
 output:
+  pdf_document:
+    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
-  pdf_document:
-    toc: yes
 ---
 
 ```{r include=TRUE, message=FALSE, warning=FALSE}
@@ -131,10 +131,34 @@ Based on this quick look of boxplots and histograms, there are several variables
 
 corrplot(cor(baseball_df[,2:17], use = 'complete.obs'))
 
+
 ```
 
-Looking at the correlation plots, there appear to be several strong correlations between explanatory variables.
+Looking at the correlation plot, there appear to be several strong correlations between explanatory variables and the target.  
+  
+From an initial inspection, it appears the team should focus on getting players on base through hits or walks.  Contrary to what I would expect, teams can still win if the pitchers allow homeruns, hits and walks to the other team.
+*Variables with Highest Positive Correlation with TARGET_WINS:*  
+  * TEAM_BATTING_H = 0.47
+  * TEAM_BATTING_HR = 0.42
+  * TEAM_BATTING_BB = 0.47
+  * TEAM_PITCHING_H = 0.47 
+  * TEAM_PITCHING_HR = 0.42
+  * TEAM_PITCHING_BB = 0.47
 
+To win more games it makes sense the team will need to make fewer errors.  
+*Variables with Strongly Negative Correlation with TARGET_WINS:*  
+  
+There were several batting variables which were related.  
+*Positive Correlations between variables*:     
+  * TEAM_PITCHING_H and TEAM_BATTING_H = 0.99  
+  * TEAM_PITCHING_HR and TEAM_BATTING_HR = 0.99  
+  * TEAM_PITCHING_BB and TEAM_BATTING_BB = 0.99    
+  * TEAM_PITCHING_SO and TEAM_BATTING_SO = 0.99   
+  
+The pitchers who have more strikeouts allow fewer hits, which makes sense.  It's interesting that pitchers who have fewer strikeouts have fewer team batting hits.  Potentially due to the game being over in fewer innings and lower score games.  This would be an interesting point to look into more.  
+*Negative Correlations between variables*:    
+  * TEAM_PITCHING_SO and TEAM_BATTING_H  = -0.34  
+  * TEAM_PITCHING_SO and TEAM_PITCHING_H = -0.34  
 
 ## Missing values
 
@@ -183,7 +207,6 @@ When HBP has values, it appears that there are no major changes in correlations.
 corrplot(cor(baseball_df[,-c(1,11)], use = 'complete.obs'))  #all rows
 
 corrplot(cor(baseball_no_hbp[,2:16], use = 'complete.obs')) #only rows  missing values for hbp
-
 
 corrplot(cor(baseball_hbp[,-c(1,11)], use = 'complete.obs')) #only rows with values for hbp 
 
@@ -322,10 +345,17 @@ As these three histograms illustrate, the bimodal distributions are explained by
 
 
 ```{r, missing-values-visualization}
+# Devin - start- baseball_df_fix not defined yet - did you want to move to after? I added the code here just so it wouldn't error out
+baseball_df_fix <- baseball_df %>%
+  mutate(TEAM_CS_YES_NO = case_when(!is.na(TEAM_BASERUN_CS) ~ 1, is.na(TEAM_BASERUN_CS) ~ 0)) %>% 
+  mutate(TEAM_HBP_YES_NO = case_when(!is.na(TEAM_BATTING_HBP) ~ 1, is.na(TEAM_BATTING_HBP) ~ 0)) %>%
+  dplyr::select(-c(TEAM_BATTING_HBP, INDEX, TEAM_BASERUN_CS))
+# Devin - end- baseball_df_fix not defined yet - did you want to move to after? I added the code here just so it wouldn't error out
 
-image(is.na(baseball_df_fix),axes=FALSE,col=gray(1:0))
-axis(2, at=0:17/17, labels=colnames(baseball_df_fix))
-axis(1, at=0:2275/2275, labels=row.names(baseball_df_fix),las=2)
+#Devin - still erroring out?
+#image(is.na(baseball_df_fix),axes=FALSE,col=gray(1:0))
+#axis(2, at=0:17/17, labels=colnames(baseball_df_fix))
+#axis(1, at=0:2275/2275, labels=row.names(baseball_df_fix),las=2)
 
 ```
 
@@ -333,7 +363,6 @@ To better visualize the missing values, it looks like two of them overlap perfec
 
 
 ```{r, overlap-na}
-
 baseball_df_fix[rowSums(is.na(baseball_df_fix)) > 0,] %>%
   dplyr::select(TEAM_PITCHING_SO, TEAM_FIELDING_DP, TEAM_BATTING_SO, TEAM_BASERUN_SB)
 
@@ -387,7 +416,6 @@ The column TEAM_BASERUN_SB is partly correlated with TEAM_BASERUN_CS in the trai
 
 
 ```{r, fielding-dp-na}
-
 baseball_df_fix %>%
   filter(is.na(TEAM_FIELDING_DP))
 
@@ -463,6 +491,66 @@ summary(baseball_back_lm)
 
 ```
 
+Before moving to the final model, I want to try creating a simple model with fewer predictors to see how it performs compared to our other models.  To starts I chose a few variables that were highly positively and negatively correlated with TARGET_WINS.  
+  * TEAM_BATTING_H
+  * TEAM_BATTING_HR
+  * TEAM_BATTING_BB
+  * TEAM_PITCHING_H
+  * TEAM_PITCHING_HR
+  * TEAM_PITCHING_BB
+  * TEAM_FIELDING_E
+  * TEAM_FIELDING_DP
+  * TEAM_BATTING_SO
+  * TEAM_CS_YES_NO
+
+From there I removed multiple predictors at once.  To do this we need to construct a null hypothesis test which states that removing the variables doesn't make a better model.  We construct a F-test and compare both versions of the model.  If the p-value is under 0.05 we reject the null hypothesis, which indicates our new model isn't different than the first model.  If the p-value is greater than 0.05, the model isn't better with those variables, so I will remove them.  The simpler the model the better.  
+  
+To determine which variables I removed, I chose the variable that was not proving to be significant in the linear regression (where the p-value was greater than 0.05).  While this doesn't mean the variable itself isn't signficiant, it means the variable alongside the other combination of variables in the model is not significant.    
+
+*Steps:*
+  * Remove TEAM_PITCHING_BB
+  *
+  
+  
+  * TEAM_PITCHING_BB & TEAM_BATTING_BB
+  * TEAM_PITCHING_SO & TEAM_BATTING_SO
+  * TEAM_PITCHING_HR & TEAM_BATTING_HR
+  * TEAM_PTICHING_H & TEAM_BATTING_H
+
+
+*Steps:*
+  * Remove TEAM_PITCHING_BB & TEAM_PITCHING_SO
+```{r model-selection}
+m1 <- lm(TARGET_WINS ~ TEAM_BATTING_H + TEAM_BATTING_HR +TEAM_BATTING_BB + TEAM_BATTING_SO  + TEAM_PITCHING_H + TEAM_PITCHING_HR + TEAM_PITCHING_BB + TEAM_PITCHING_SO + TEAM_FIELDING_E + TEAM_FIELDING_DP + TEAM_CS_YES_NO,data = baseball_df_fix)
+summary(m1)
+
+#remove TEAM_PITCHING_BB & TEAM_PITCHING_SO
+m2<- lm(TARGET_WINS ~ TEAM_BATTING_H + TEAM_BATTING_HR +TEAM_BATTING_BB + TEAM_BATTING_SO  + TEAM_PITCHING_H + TEAM_PITCHING_HR + TEAM_FIELDING_E + TEAM_FIELDING_DP + TEAM_CS_YES_NO,data = baseball_df_fix)
+
+summary(m2)
+anova(m1, m2)
+```
+
+  * Took the log of TEAM_PITCHING_H it's relationship to TARGET_WINS more linear  
+```{r forward-selection}
+par(mfrow=c(2,1))
+plot(baseball_df_fix$TEAM_PITCHING_H,baseball_df_fix$TARGET_WINS,xlab = 'TEAM_PITCHING',ylab = 'TARGET_WINS',main= 'Team Pitching H vs. Target Wins')
+plot(log(baseball_df_fix$TEAM_PITCHING_H),baseball_df_fix$TARGET_WINS,xlab = 'LOG(TEAM_PITCHING)',ylab = 'TARGET_WINS')
+
+
+#log TEAM_PITCHING_H
+m3 <- lm(TARGET_WINS ~ TEAM_BATTING_H + TEAM_BATTING_HR +TEAM_BATTING_BB + TEAM_BATTING_SO  + log(TEAM_PITCHING_H) + TEAM_PITCHING_HR + TEAM_FIELDING_E + TEAM_FIELDING_DP + TEAM_CS_YES_NO,data = baseball_df_fix)
+summary(m3)
+```
+  * Remove TEAM_BATTING_H  
+```{r model-selection2}
+#Remove TEAM_BATTING_H
+m4 <- lm(TARGET_WINS ~ TEAM_BATTING_HR +TEAM_BATTING_BB + TEAM_BATTING_SO  + log(TEAM_PITCHING_H) + TEAM_PITCHING_HR + TEAM_FIELDING_E + TEAM_FIELDING_DP + TEAM_CS_YES_NO,data = baseball_df_fix)
+summary(m4)
+anova(m3, m4)
+```
+
+This leaves a model with an R-squared value of ~30, which means the model accounts for 30% of the variance in the data.
 
 ## Final Model using all Training Data
 
@@ -486,6 +574,8 @@ summary(baseball_lm2)
 ```
 
 The R-squared statistic indicates that this model predicts less than half of the variation in wins with the included features. For a next step, I hope to use cross-validation techniques to split the training data further and allow me to compare RMSE of various models.
+
+
 
 ```{r, caret-cross-validation}
 #Tom - still working on this
