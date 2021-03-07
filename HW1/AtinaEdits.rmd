@@ -1,0 +1,299 @@
+---
+title: "Data 621 - HW1"
+author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
+date: "2/26/2021"
+output:
+  pdf_document:
+    toc: TRUE
+    toc_depth: 2 
+  html_document:
+    highlight: pygments
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, error=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r loadData, include=FALSE}
+# Libraries
+library(dplyr)
+library(GGally)
+library(ggplot2)
+library(readr)
+library(reshape2)
+library(purrr)
+library(tidyr)
+library(corrplot)
+library(MASS)
+library(caret)
+library(Hmisc)
+library(e1071)
+library(Amelia)
+        
+set.seed(2012)
+# read data
+baseball_df <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW1/moneyball-training-data.csv')
+baseball_eval <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW1/moneyball-evaluation-data.csv')
+```
+
+
+
+# **DATA EXPLORATION**
+The data set contains approximately 2276 records. Each record represents a professional baseball team from the years 1871 to 2006 inclusive. Each record has the performance of the team for the given year, with all of the statistics adjusted to match the performance of a 162 game season.Below is a short description of the variables
+
+* INDEX 				    - Identification Variable
+* TARGET_WINS       - Number of wins
+* TEAM_BATTING_H		- Base Hits by batters (1B,2B,3B,HR)
+* TEAM_BATTING_2B		- Doubles by batters (2B)
+* TEAM_BATTING_3B		- Triples by batters (3B)
+* TEAM_BATTING_HR		- Homeruns by batters (4B)
+* TEAM_BATTING_BB		- Walks by batters 
+* TEAM_BATTING_HBP	- Batters hit by pitch (get a free base) 
+* TEAM_BATTING_SO		- Strikeouts by batters 
+* TEAM_BASERUN_SB		- Stolen bases 
+* TEAM_BASERUN_CS		- Caught stealing 
+* TEAM_FIELDING_E		- Errors 
+* TEAM_FIELDING_DP	- Double Plays 
+* TEAM_PITCHING_BB	- Walks allowed 
+* TEAM_PITCHING_H		- Hits allowed 
+* TEAM_PITCHING_HR	- Homeruns allowed 
+* TEAM_PITCHING_SO	- Strikeouts by pitchers 
+
+**Objective**
+To build a multiple linear regression model on the training data to predict *TARGET_WINS*, which is the number of wins for the team.
+
+
+## Summary
+
+```{r}
+skimr::skim(baseball_df)
+```
+```{r, baseball-summary}
+summary(baseball_df)
+print('Observations per year, 1871 - 2006:') 
+round(nrow(baseball_df)/(2006-1871),2)
+```
+The summary views above gives a quick overview of the dataset in terms of missing observation (and subsequently the completion % out of 2276 records for each variable) averages, standard deviations, quartiles and percentiles, minimum and maximum values and distributions. All the datatypes seem to be numeric. Observations span 128 years, with an average of 17 teams playing per year.
+
+There are several variables with skewed distributions that could benefit from transformation.Additionally, there are a few variables with bi-modal distributions. Moreover, certain variables such as TEAM_BATTING_HBP have a lot of missing data (2085 out of 2276 obs.) which lowers its completion rate to about just 8%.
+
+## Outliers
+```{r dataOutliers}
+baseball_df %>% 
+  dplyr::select(-INDEX, -TARGET_WINS) %>% 
+  pivot_longer(everything(), names_to = 'Var', values_to='Value') %>% 
+  ggplot(aes(x = Var, y = Value)) +
+  geom_boxplot() + 
+  coord_flip()
+  
+```
+From the boxplot above, we can see that several data columns like TEAM_PITCHING_H AND TEAM_PITCHING_SO have extreme outliers. The assignment mentions that some of the season records were adjusted to match the performance during a 162-game season. 
+
+# Correlation and Collinearity
+
+```{r, corrplot}
+corrplot(cor(baseball_df[,2:17], use = 'complete.obs'))
+```
+
+
+Looking at the correlation plot, there appear to be several statistically significant correlations between explanatory variables and the target.  
+From an initial inspection, it appears the team should focus on getting players on base through hits or walks.  Contrary to what was expected, teams can still win if the pitchers allow homeruns, hits and walks to the other team.
+
+*Variables with Highest Positive Correlation with TARGET_WINS:*  
+  * TEAM_BATTING_H = 0.47
+  * TEAM_BATTING_HR = 0.42
+  * TEAM_BATTING_BB = 0.47
+  * TEAM_PITCHING_H = 0.47 
+  * TEAM_PITCHING_HR = 0.42
+  * TEAM_PITCHING_BB = 0.47
+
+To win more games it makes sense the team will need to make fewer errors. 
+
+Within this group, we detected collinearity between some of the variables:
+
+*Positive Correlations between predictors*:     
+  * TEAM_PITCHING_H and TEAM_BATTING_H = 0.99  
+  * TEAM_PITCHING_HR and TEAM_BATTING_HR = 0.99  
+  * TEAM_PITCHING_BB and TEAM_BATTING_BB = 0.99    
+  
+*Negative Correlations between predictors*:    
+  * TEAM_PITCHING_SO and TEAM_BATTING_H  = -0.34  
+  * TEAM_PITCHING_SO and TEAM_PITCHING_H = -0.34  
+  
+# **DATA PREPARATION**
+
+## Missing values
+
+In terms of missing values, there are two variables missing many observations. TEAM_BATTING_HBP is missing over 90% of its values, while TEAM_BASERUN_CS is missing just around 30%. Since TEAM_BATTING_HBP is barely complete and, deleting this variable would make sense. 
+
+The rest of the variables with missing values are:
+TEAM_BATTING_SO
+TEAM_BASERUN_SB
+TEAM_BASERUN_CS
+TEAM_FIELDING_DP
+TEAM_PITCHING_SO
+
+We will attempt multiple imputation.Multiple imputation assumes normailty of data so let's check for skewness once again among the dataset:
+
+```{r}
+baseball_df %>%
+  keep(is.numeric) %>%
+  gather() %>%
+  ggplot(aes(value)) +
+  facet_wrap(~key,scales="free")+
+  geom_histogram()
+```
+
+It seems like TEAM_BASERUN_SB, TEAM_PITCHING_SO and TEAM_FIELDING_E are skewed. Let's confirm this using the skewness function.
+
+```{r}
+skewness(baseball_df$TEAM_PITCHING_SO,na.rm=TRUE)
+skewness(baseball_df$TEAM_BASERUN_SB,na.rm=TRUE)
+skewness(baseball_df$TEAM_FIELDING_E,na.rm=TRUE)
+```
+Let's log transform these variables prior to multiple imputation.
+
+```{r}
+baseball_df2 <- baseball_df
+baseball_df2$TEAM_PITCHING_SO <- log(baseball_df2$TEAM_PITCHING_SO)
+baseball_df2$TEAM_BASERUN_SB <- log(baseball_df2$TEAM_BASERUN_SB)
+baseball_df2$TEAM_FIELDING_E <- log(baseball_df2$TEAM_FIELDING_E)
+baseball_df2$TEAM_PITCHING_SO <- ifelse(baseball_df2$TEAM_PITCHING_SO=="-Inf",NA,baseball_df2$TEAM_PITCHING_SO)
+baseball_df2$TEAM_BASERUN_SB <- ifelse(baseball_df2$TEAM_BASERUN_SB == "-Inf",NA,baseball_df2$TEAM_BASERUN_SB)
+baseball_df2$TEAM_FIELDING_E <-ifelse(baseball_df2$TEAM_FIELDING_E=="-Inf",NA,baseball_df2$TEAM_FIELDING_E)
+```
+
+Now that we have log transformed most of the variables, let's impute the data.
+```{r}
+#cor(baseball_df2)
+```
+
+
+```{r}
+require(Amelia)
+set.seed(123)
+missmod<- amelia(baseball_df2)
+```
+
+# **BUILD MODELS**
+
+## Model 1
+
+The initial model takes the imputed dataset and models TARGET_WINS against all variables present in the dataset except for INDEX (since this is the id variables and had a very weak negative association with TARGET_WINS)
+
+```{r}
+betas <- NULL
+ses <- NULL
+for(i in 1:missmod$m)
+  {
+lmod <-  lm (TARGET_WINS ~.-INDEX,  missmod$imputations[[i]])
+betas <- rbind(betas ,coef(lmod))
+ses <- rbind(ses,coef(summary(lmod))[,2])
+}
+summary(lmod)
+```
+
+
+
+The model above is for all of the predictors in the dataset(except for Index). It is statistically significant at p<.05 and the adjusted r squared for the model is 0.405, which means that about 40.5% of the variance in the dataset is explained by the model.
+
+## Model 2 
+
+We will modify the model a bit and eliminate variables that we had previously flagged for multicollinearity such as TEAM_PITCHING_HR,TEAM_PITCHING_BB and TEAM_PITCHING_H. This is important since multicollinearity  can significantly reduce model performance.Out of these predictors, TEAM_PITCHING_H also had extreme outliers, along with TEAM_PITCHING_SO. Since the r-square is computed using the mean, variables with outliers will throw off this value. Therefore, although we have transformed TEAM_PITCHING_SO, it maybe best to still remove this variable from the model.
+```{r}
+betas <- NULL
+ses <- NULL
+for(i in 1:missmod$m)
+  {
+lmod2 <-  lm (TARGET_WINS ~.-INDEX-TEAM_PITCHING_HR-TEAM_PITCHING_BB-TEAM_PITCHING_H-TEAM_PITCHING_SO, missmod$imputations[[i]])
+betas <- rbind(betas ,coef(lmod2))
+ses <- rbind(ses,coef(summary(lmod2))[,2])
+}
+summary(lmod2)
+```
+After removing variables that we had previously flagged for multicollinearity and outliers, we can see that the adjusted r-squared for the model drops a bit. However the F-Statistic seems to have improved.
+
+## Model 3
+
+In addition to the above, this model considers four different interaction effects.
+
+``` {r, baseball-with-interactions}
+betas <- NULL
+ses <- NULL
+for(i in 1:missmod$m)
+  {
+lmod3 <-  lm (TARGET_WINS ~.-INDEX-TEAM_PITCHING_HR-TEAM_PITCHING_BB-TEAM_PITCHING_H-TEAM_PITCHING_SO+(TEAM_BATTING_H * TEAM_BATTING_2B + TEAM_BATTING_H * TEAM_BATTING_3B + TEAM_BATTING_H * TEAM_BATTING_HR), missmod$imputations[[i]])
+betas <- rbind(betas ,coef(lmod3))
+ses <- rbind(ses,coef(summary(lmod3))[,2])
+}
+summary(lmod3)
+```
+After adding the interaction effects, it seems that out adjusted r-sqaured has gone up to 0.40 (model explains 40% of the variance in the data). The model is statistically significant at p<0.05. 
+
+# **SELECT MODELS**
+
+## Residual Plots
+
+*Model 1*
+
+```{r}
+res <- resid(lmod)
+plot(density(res))
+qqnorm(res)
+qqline(res)
+```
+*Model 2*
+```{r}
+res2 <- resid(lmod2)
+plot(density(res2))
+qqnorm(res2)
+qqline(res2)
+```
+*Model 3*
+```{r}
+res3 <- resid(lmod3)
+plot(density(res3))
+qqnorm(res3)
+qqline(res3)
+```
+The diagnostic plots illustrate that our residuals for all three models are normally distributed.
+
+Let's evaluate our models on the evaluation dataset.
+
+```{r}
+predictions <- lmod %>% predict(baseball_eval)
+predictions
+```
+```{r}
+p <- predict(lmod, newdata = diamonds)
+error <- (baseball_eval$TARGET_WINS - p
+RMSE <- sqrt(mean(error^2))
+RMSE
+```
+
+      
+```{r}
+eval_predict <- predict.lm(lmod, newdata = baseball_eval)
+summary(eval_predict)
+
+```
+
+## **REFERENCES**
+An Introduction to Statistical Learning with Applications in R Springer
+
+## **CODE APPENDIX**
+The code chunks below shows the R code called above throughout the analysis. They are being reproduced in the appendix for review and feedback.
+
+
+
+
+
+
+
+
+
+
