@@ -574,8 +574,47 @@ summary(baseball_lm2)
 
 ```
 
-The R-squared statistic indicates that this model predicts less than half of the variation in wins with the included features. For a next step, I hope to use cross-validation techniques to split the training data further and allow me to compare RMSE of various models.
+## Imputing Missing Values with the Median
 
+```{r}
+med <- baseball_df_fix %>% 
+   mutate_all(~ifelse(is.na(.), median(., na.rm = TRUE), .))
+nonnacols <- baseball_df_fix[complete.cases(baseball_df_fix),]
+nonnacols <- nonnacols %>% 
+  dplyr::select(INDEX, TEAM_BATTING_SO, TEAM_BASERUN_SB, TEAM_PITCHING_SO, TEAM_FIELDING_DP)
+
+nacols <- baseball_df_fix[!complete.cases(baseball_df_fix),]
+nacols <- nacols %>% 
+  dplyr::select(INDEX)
+nacolsmed <- merge(nacols, med, by = "INDEX")
+nacolsmed <- nacolsmed %>% 
+  dplyr::select(INDEX, TEAM_BATTING_SO, TEAM_BASERUN_SB, TEAM_PITCHING_SO, TEAM_FIELDING_DP)
+evalmed <- regr.eval(nonnacols$TEAM_FIELDING_DP, nacolsmed$TEAM_FIELDING_DP)
+evalmed
+```
+We will transfrom the imputed dataset before running the model
+```{r}
+med$TEAM_BASERUN_SB  <- log(trainmed$TEAM_BASERUN_SB)
+med$TEAM_BATTING_3B <- log(trainmed$TEAM_BATTING_3B)
+med$TEAM_PITCHING_BB <- log(trainmed$TEAM_PITCHING_BB)
+med$TEAM_PITCHING_SO <- log(trainmed$TEAM_PITCHING_SO)
+med$TEAM_FIELDING_E <- log(trainmed$TEAM_FIELDING_E)
+```
+```{r}
+lmmed <- lm(formula = TARGET_WINS ~.-TEAM_BATTING_1B+TEAM_FIELDING_E + TEAM_PITCHING_BB + TEAM_PITCHING_SO- TEAM_BATTING_SLG-TEAM_PITCHING_H-TEAM_BATTING_BB-TEAM_BATTING_SO-TEAM_PITCHING_HR-TEAM_PITCHING_BB- + TEAM_BATTING_3B:TEAM_BATTING_HR + TEAM_BATTING_2B:TEAM_BATTING_HR +  TEAM_BATTING_H:TEAM_BATTING_HR + TEAM_BATTING_H:TEAM_BATTING_3B- TEAM_BATTING_3B - TEAM_BATTING_SO - TEAM_BATTING_2B-TEAM_BATTING_BB-TEAM_BATTING_HR-TEAM_BATTING_H-TEAM_BATTING_HR- TEAM_PITCHING_HR,mbtrainmed)
+summary(lmmed)
+```
+
+```{r}
+res <- resid(lmmed)
+plot(density(res))
+qqnorm(res)
+qqline(res)
+```
+
+```{r}
+
+The R-squared statistic indicates that this model predicts less than half of the variation in wins with the included features. For a next step, I hope to use cross-validation techniques to split the training data further and allow me to compare RMSE of various models.
 
 
 ```{r, cv-setup}
