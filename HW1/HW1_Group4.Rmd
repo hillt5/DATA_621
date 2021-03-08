@@ -1,0 +1,113 @@
+---
+title: "Data 621"
+subtitle: 'Group 4 - Homework1'
+author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
+date: "3/1/2020"
+output:
+  html_document: default
+  pdf_document:
+    toc: TRUE
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, error=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r loadData, include=FALSE}
+# Libraries
+library(dplyr)
+library(DataExplorer)
+library(GGally)
+library(ggplot2)
+library(readr)
+library(reshape2)
+library(purrr)
+library(tidyr)
+library(corrplot)
+library(MASS)
+library(caret)
+
+set.seed(2012)
+
+# read data
+baseball_df <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW1/moneyball-training-data.csv')
+baseball_eval <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW1/moneyball-evaluation-data.csv')
+
+
+```
+
+# DATA EXPLORATION
+The dataset given contains 2276 records for baseball teams from the years 1871 to 2006. There are 15 features (predictors) for a team's performance in a season and a target (response) variable for team's wins in that season. A baseball season has 162 games. The wins distribution seems nearly normal distributed. It indicates that seasons do not have many too many high or low number of wins.
+
+
+```{r histWins}
+plot_histogram(baseball_df$TARGET_WINS, 
+               title="Distribution of TARGET_WINS")
+```
+
+
+
+
+# DATA PREPARATION
+Now we have good understanding of data so we can move to prepare the data for buliding model. 
+
+## Outliers
+Let's see once the outliers for each predictor.
+
+
+```{r dataOutliers}
+baseball_df %>% 
+  dplyr::select(-INDEX, -TARGET_WINS) %>% 
+  pivot_longer(everything(), names_to = 'Var', values_to='Value') %>% 
+  ggplot(aes(x = Var, y = Value)) +
+  geom_boxplot() + 
+  coord_flip()
+  
+```
+
+
+
+
+# BUILD MODELS
+
+
+
+# SELECT MODELS
+
+
+
+# REFERENCES
+* An Introduction to Statistical Learning
+with Applications in R
+Springer
+
+
+# CODE APPENDIX
+The code chunks below shows the R code called above throughout the analysis.
+They are being reproduced in the appendix for review and feedback.
+
+```{r appendix, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, eval=FALSE)
+```
+
+
+```{r setup}
+```
+
+```{r loadData}
+```
+
+```{r histWins}
+```
+
+```{r dataOutliers}
+```
+
+
+
+
+
+
+
+
