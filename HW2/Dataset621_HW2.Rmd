@@ -1,0 +1,39 @@
+---
+title: "Data621 - HW2"
+author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
+date: "3/21/2021"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    highlight: pygments
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_float: yes
+---
+
+
+```{r include=TRUE, message=FALSE, warning=FALSE}
+library(dplyr)
+library(DataExplorer)
+library(GGally)
+library(ggplot2)
+library(readr)
+library(reshape2)
+library(purrr)
+library(tidyr)
+library(corrplot)
+library(MASS)
+library(caret)
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, load-data}
+read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW2/classification-output-data.csv')
+```
