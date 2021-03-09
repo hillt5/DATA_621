@@ -1,17 +1,21 @@
+
 ---
 title: "Data 621 - HW1"
 author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
 date: "2/26/2021"
 output:
-  pdf_document:
-    toc: TRUE
-    toc_depth: 2 
+  word_document:
+    toc: yes
+    toc_depth: '2'
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: 2
 ---
 
 ```{r setup, include=FALSE}
@@ -101,7 +105,7 @@ corrplot(cor(baseball_df[,2:17], use = 'complete.obs'))
 
 
 Looking at the correlation plot, there appear to be several statistically significant correlations between explanatory variables and the target.  
-From an initial inspection, it appears the team should focus on getting players on base through hits or walks.  Contrary to what was expected, teams can still win if the pitchers allow homeruns, hits and walks to the other team.
+From an initial inspection, it appears the team should focus on getting players on base through hits or walks.Contrary to what was expected, teams can still win if the pitchers allow homeruns, hits and walks to the other team.
 
 *Variables with Highest Positive Correlation with TARGET_WINS:*  
   * TEAM_BATTING_H = 0.47
@@ -137,7 +141,11 @@ TEAM_BASERUN_CS
 TEAM_FIELDING_DP
 TEAM_PITCHING_SO
 
-We will attempt multiple imputation.Multiple imputation assumes normailty of data so let's check for skewness once again among the dataset:
+
+
+*Multiple Imputation*
+
+We will also attempt multiple imputation on the original dataset.Multiple imputation assumes normailty of data so let's check for skewness once again among the dataset:
 
 ```{r}
 baseball_df %>%
@@ -148,7 +156,7 @@ baseball_df %>%
   geom_histogram()
 ```
 
-It seems like TEAM_BASERUN_SB, TEAM_PITCHING_SO and TEAM_FIELDING_E are skewed. Let's confirm this using the skewness function.
+It seems like TEAM_BASERUN_SB, TEAM_PITCHING_SO and TEAM_FIELDING_E are skewed. Let's confirm this using the skewness function. Anything that has a skewness above 1 is thought to be highly skewed.
 
 ```{r}
 skewness(baseball_df$TEAM_PITCHING_SO,na.rm=TRUE)
@@ -158,32 +166,86 @@ skewness(baseball_df$TEAM_FIELDING_E,na.rm=TRUE)
 Let's log transform these variables prior to multiple imputation.
 
 ```{r}
+# Log Transformation
 baseball_df2 <- baseball_df
 baseball_df2$TEAM_PITCHING_SO <- log(baseball_df2$TEAM_PITCHING_SO)
 baseball_df2$TEAM_BASERUN_SB <- log(baseball_df2$TEAM_BASERUN_SB)
 baseball_df2$TEAM_FIELDING_E <- log(baseball_df2$TEAM_FIELDING_E)
+
+#Certain values changed to -lnf afte transformation. This throws an error during imputation so we will change the values to NA.
 baseball_df2$TEAM_PITCHING_SO <- ifelse(baseball_df2$TEAM_PITCHING_SO=="-Inf",NA,baseball_df2$TEAM_PITCHING_SO)
 baseball_df2$TEAM_BASERUN_SB <- ifelse(baseball_df2$TEAM_BASERUN_SB == "-Inf",NA,baseball_df2$TEAM_BASERUN_SB)
 baseball_df2$TEAM_FIELDING_E <-ifelse(baseball_df2$TEAM_FIELDING_E=="-Inf",NA,baseball_df2$TEAM_FIELDING_E)
 ```
 
-Now that we have log transformed most of the variables, let's impute the data.
-```{r}
-#cor(baseball_df2)
-```
-
+Now that we have log transformed most of the variable and all our data are numeric, let's impute the data.
 
 ```{r}
 require(Amelia)
 set.seed(123)
 missmod<- amelia(baseball_df2)
 ```
+Notice that we have imputed the entire dataset.This is because, although certain variables do not have any missing data, they maybe helpful in predicting missing values in the variables that do have them (Faraway, 2014)
 
-# **BUILD MODELS**
+# **BUILDMODELS**
 
 ## Model 1
 
-The initial model takes the imputed dataset and models TARGET_WINS against all variables present in the dataset except for INDEX (since this is the id variables and had a very weak negative association with TARGET_WINS)
+We will build the initial models on the original dataset first (prior to multiple imputation) for comparison purposes.
+
+We want to try creating a simple model with fewer predictors to see how it performs compared to our other models.  To start, we chose a few variables that were highly positively and negatively correlated with TARGET_WINS. 
+
+From there we removed multiple predictors at once.  To do this we need to construct a null hypothesis test which states that removing the variables doesn't make a better model.  We construct a F-test and compare both versions of the model.  If the p-value is under 0.05 we reject the null hypothesis, which indicates our new model isn't different than the first model.  If the p-value is greater than 0.05, the model isn't better with those variables, so we will remove them.  The simpler the model the better.  
+  
+To determine which variables we removed,we chose the variable that was not proving to be significant in the linear regression (where the p-value was greater than 0.05).  While this doesn't mean the variable itself isn't signficant, it means the variable alongside the other combination of variables in the model is not significant. 
+
+```{r}
+baseball_df_fix <- baseball_df
+```
+
+```{r}
+m1 <- lm(TARGET_WINS ~ TEAM_BATTING_H + TEAM_BATTING_HR +TEAM_BATTING_BB + TEAM_BATTING_SO  + TEAM_PITCHING_H + TEAM_PITCHING_HR + TEAM_PITCHING_BB + TEAM_PITCHING_SO + TEAM_FIELDING_E + TEAM_FIELDING_DP,data = baseball_df_fix)
+summary(m1)
+
+#remove TEAM_PITCHING_BB & TEAM_PITCHING_SO
+m2<- lm(TARGET_WINS ~ TEAM_BATTING_H + TEAM_BATTING_HR +TEAM_BATTING_BB + TEAM_BATTING_SO  + TEAM_PITCHING_H + TEAM_PITCHING_HR + TEAM_FIELDING_E + TEAM_FIELDING_DP,data = baseball_df_fix)
+
+summary(m2)
+anova(m1, m2)
+```
+
+ * Took the log of TEAM_PITCHING_H it's relationship to TARGET_WINS more linear  
+```{r forward-selection}
+par(mfrow=c(2,1))
+plot(baseball_df_fix$TEAM_PITCHING_H,baseball_df_fix$TARGET_WINS,xlab = 'TEAM_PITCHING',ylab = 'TARGET_WINS',main= 'Team Pitching H vs. Target Wins')
+plot(log(baseball_df_fix$TEAM_PITCHING_H),baseball_df_fix$TARGET_WINS,xlab = 'LOG(TEAM_PITCHING)',ylab = 'TARGET_WINS')
+
+
+#log TEAM_PITCHING_H
+m3 <- lm(TARGET_WINS ~ TEAM_BATTING_H + TEAM_BATTING_HR +TEAM_BATTING_BB + TEAM_BATTING_SO  + log(TEAM_PITCHING_H) + TEAM_PITCHING_HR + TEAM_FIELDING_E + TEAM_FIELDING_DP,data = baseball_df_fix)
+summary(m3)
+```
+  * Remove TEAM_BATTING_H  
+```{r model-selection2}
+#Remove TEAM_BATTING_H
+m4 <- lm(TARGET_WINS ~ TEAM_BATTING_HR +TEAM_BATTING_BB + TEAM_BATTING_SO  + log(TEAM_PITCHING_H) + TEAM_PITCHING_HR + TEAM_FIELDING_E + TEAM_FIELDING_DP,data = baseball_df_fix)
+summary(m4)
+anova(m3, m4)
+```
+
+## Model 2
+
+This model eliminates several features altogether from Model 1 including those with missing values, transforms three, and considers four different interaction effects.
+
+```{r,lm}
+baseball_lm2 <- lm (baseball_df_fix, formula = TARGET_WINS ~.-INDEX+log(TEAM_FIELDING_E) + log(TEAM_PITCHING_BB) -TEAM_PITCHING_H-TEAM_BATTING_BB-TEAM_PITCHING_HR-TEAM_PITCHING_BB-TEAM_FIELDING_E+log(TEAM_FIELDING_E) + TEAM_BATTING_3B:TEAM_BATTING_HR + TEAM_BATTING_2B:TEAM_BATTING_HR +  TEAM_BATTING_H:TEAM_BATTING_HR + TEAM_BATTING_H:TEAM_BATTING_3B- TEAM_BATTING_3B - TEAM_BATTING_SO - TEAM_BATTING_2B-TEAM_BATTING_BB-TEAM_BATTING_HR-TEAM_BATTING_H-TEAM_BATTING_HR- TEAM_PITCHING_HR-TEAM_BATTING_HBP-TEAM_FIELDING_DP-TEAM_PITCHING_SO-TEAM_BASERUN_SB-TEAM_BASERUN_CS)
+summary(baseball_lm2)
+```
+The R-squared statistic indicates that this model predicts about half of the variation in wins with the included features. The model is statistically significant at p<.05, however the F-Statistic seems to have fallen quite a bit from the initial model.
+
+## Model 3
+
+This model takes into account the imputed dataset and models TARGET_WINS against all variables present in the dataset except for INDEX (since this is the id variables and had a very weak negative association with TARGET_WINS)
 
 ```{r}
 betas <- NULL
@@ -196,12 +258,9 @@ ses <- rbind(ses,coef(summary(lmod))[,2])
 }
 summary(lmod)
 ```
+The model above is for all of the predictors in the dataset(except for Index). It is statistically significant at p<.05 and the adjusted r squared for the model is 0.405, which means that about 40.5% of the variance in the dataset is explained by the model. 
 
-
-
-The model above is for all of the predictors in the dataset(except for Index). It is statistically significant at p<.05 and the adjusted r squared for the model is 0.405, which means that about 40.5% of the variance in the dataset is explained by the model.
-
-## Model 2 
+## Model 4
 
 We will modify the model a bit and eliminate variables that we had previously flagged for multicollinearity such as TEAM_PITCHING_HR,TEAM_PITCHING_BB and TEAM_PITCHING_H. This is important since multicollinearity  can significantly reduce model performance.Out of these predictors, TEAM_PITCHING_H also had extreme outliers, along with TEAM_PITCHING_SO. Since the r-square is computed using the mean, variables with outliers will throw off this value. Therefore, although we have transformed TEAM_PITCHING_SO, it maybe best to still remove this variable from the model.
 ```{r}
@@ -217,9 +276,9 @@ summary(lmod2)
 ```
 After removing variables that we had previously flagged for multicollinearity and outliers, we can see that the adjusted r-squared for the model drops a bit. However the F-Statistic seems to have improved.
 
-## Model 3
+## Model 5
 
-In addition to the above, this model considers four different interaction effects.
+In addition to the above, this model considers the four different interaction effects from Model 2 above.
 
 ``` {r, baseball-with-interactions}
 betas <- NULL
@@ -236,54 +295,154 @@ After adding the interaction effects, it seems that out adjusted r-sqaured has g
 
 # **SELECT MODELS**
 
-## Residual Plots
+## Diagnostics
+
+We will look at the residual plots and model performance statistics (MSE and RMSE) for each of the models.
 
 *Model 1*
+
+```{r}
+res0 <- resid(m4)
+plot(density(res0))
+qqnorm(res0)
+qqline(res0)
+ggplot(data = m4, aes(x = .fitted, y = .resid)) +
+  geom_jitter() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  xlab("Fitted values") +
+  ylab("Residuals")
+```
+```{r}
+RSS <- c(crossprod(m4$residuals))
+MSE <- RSS/length(m4$residuals)
+print(paste0("Mean Squared Error: ", MSE))
+print(paste0("Root MSE: ", sqrt(MSE)))
+```
+
+*Model 2*
+
+```{r}
+resx <- resid(baseball_lm2)
+plot(density(resx))
+qqnorm(resx)
+qqline(resx)
+ggplot(data = baseball_lm2, aes(x = .fitted, y = .resid)) +
+  geom_jitter() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  xlab("Fitted values") +
+  ylab("Residuals")
+```
+
+```{r}
+RSS <- c(crossprod(baseball_lm2$residuals))
+MSE <- RSS/length(baseball_lm2$residuals)
+print(paste0("Mean Squared Error: ", MSE))
+print(paste0("Root MSE: ", sqrt(MSE)))
+```
+
+*Model 3*
 
 ```{r}
 res <- resid(lmod)
 plot(density(res))
 qqnorm(res)
 qqline(res)
+ggplot(data = lmod, aes(x = .fitted, y = .resid)) +
+  geom_jitter() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  xlab("Fitted values") +
+  ylab("Residuals")
 ```
-*Model 2*
+
+```{r}
+RSS <- c(crossprod(lmod$residuals))
+MSE <- RSS/length(lmod$residuals)
+print(paste0("Mean Squared Error: ", MSE))
+print(paste0("Root MSE: ", sqrt(MSE)))
+```
+*Model 4*
 ```{r}
 res2 <- resid(lmod2)
 plot(density(res2))
 qqnorm(res2)
 qqline(res2)
+ggplot(data = lmod2, aes(x = .fitted, y = .resid)) +
+  geom_jitter() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  xlab("Fitted values") +
+  ylab("Residuals")
 ```
-*Model 3*
+```{r}
+RSS <- c(crossprod(lmod2$residuals))
+MSE <- RSS/length(lmod2$residuals)
+print(paste0("Mean Squared Error: ", MSE))
+print(paste0("Root MSE: ", sqrt(MSE)))
+```
+*Model 5*
 ```{r}
 res3 <- resid(lmod3)
 plot(density(res3))
 qqnorm(res3)
 qqline(res3)
-```
-The diagnostic plots illustrate that our residuals for all three models are normally distributed.
-
-Let's evaluate our models on the evaluation dataset.
-
-```{r}
-predictions <- lmod %>% predict(baseball_eval)
-predictions
-```
-```{r}
-p <- predict(lmod, newdata = diamonds)
-error <- (baseball_eval$TARGET_WINS - p
-RMSE <- sqrt(mean(error^2))
-RMSE
+ggplot(data = lmod3, aes(x = .fitted, y = .resid)) +
+  geom_jitter() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  xlab("Fitted values") +
+  ylab("Residuals")
 ```
 
-      
 ```{r}
-eval_predict <- predict.lm(lmod, newdata = baseball_eval)
+RSS <- c(crossprod(lmod3$residuals))
+MSE <- RSS/length(lmod3$residuals)
+print(paste0("Mean Squared Error: ", MSE))
+print(paste0("Root MSE: ", sqrt(MSE)))
+```
+The diagnostic plots illustrate that our residuals for all 5 models are normally distributed. However, in terms of the residual abline plot, Model 2's residual plot seems the best compared to the other 4, which seem to have a pattern to them.In addition, Model 2 also had the lowest MSE/RMSE and highest adjusted R^2 (0.44)
+
+Therefore, *Model 2* is the best model thus far. We will further test out this model on the evaluation dataset to see if this hold.
+
+# **FURTHER EVALUATION**
+
+To ensure the model’s efficacy when applied to the evaluation data set, we apply the same set of transformations used on the Training data set.Since the actual wins are withheld, we compared the distribution of predictions to the actual wins in the training set. The means were similar but the training data included much more variation between teams. It's also worth mentioning as well that using the predict function creates missing values as the evaluation data is missing. In fact, for TEAM_BATTING_HBP, over 90% of rows are missing entries.
+
+```{r, eval-data-missing}
+round(100*colSums(is.na(baseball_eval))/nrow(baseball_eval),2)
+```
+The prediction data also has missing values, which are approximately the same as the training data.
+
+We will run our selected model on the evaluation dataset and look at the summary.
+
+```{r}
+eval_predict <-  predict(baseball_lm2, newdata = baseball_eval, interval="prediction")
+hist(baseball_df$TARGET_WINS)
+hist(eval_predict)
+
 summary(eval_predict)
-
+sd(eval_predict)
+summary(baseball_df$TARGET_WINS)
+sd(baseball_df$TARGET_WINS)
 ```
+Here are the predicted values for Target Wins, based on our model for the teams in the evaluation dataset.
+```{r}
+pred.TW <- round(predict(baseball_lm2, baseball_eval))
+baseball_eval$TARGET_WINS <- pred.TW
+```
+
+```{r}
+knitr::kable(baseball_eval,caption="Predicted Target Wins")
+```
+
+## CONCLUSION
+
+Our final model predicts target wins for the team as follows:
+
+Target Wins = 2.143e+00-2.392e+01(log(TEAM_FIELD_E))+2.508e+01(log(TEAM_PITCHING_BB))-4.306e-03(TEAM_BATTING_3B:TEAM_BATTING_HR)-3.449e-05(TEAM_BATTING_2B:TEAM_BATTING_HR)+1.434e-04(TEAM_BATTING_H:TEAM_BATTING_HR)+4.332e-04(TEAM_BATTING_H:TEAM_BATTING_3B)
+
+The model seems to suggest that in order to maximize a teams chances of winning they should focus on reducing fielding errors which makes sense. However, what is interesting from our model is the positive association between walks allowed and target wins. Moreover, the model also seems to suggest that some of the batting interaction effects  may slightly lower your chances of winning. While this is definitely an interesting finding, this may just as well be because observations suggest that one may lower the chances or another and vice versa. 
 
 ## **REFERENCES**
 An Introduction to Statistical Learning with Applications in R Springer
+Linear Models with R (2014), Julian J, Faraway
 
 ## **CODE APPENDIX**
 The code chunks below shows the R code called above throughout the analysis. They are being reproduced in the appendix for review and feedback.
