@@ -3,30 +3,16 @@ title: "Data621 - HW2"
 author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
 date: "3/21/2021"
 output:
-  pdf_document:
-    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    toc: yes
+subtitle: 'Group 4'
 ---
-
-
-```{r include=TRUE, message=FALSE, warning=FALSE}
-library(dplyr)
-library(DataExplorer)
-library(GGally)
-library(ggplot2)
-library(readr)
-library(reshape2)
-library(purrr)
-library(tidyr)
-library(corrplot)
-library(MASS)
-library(caret)
-```
 
 
 ```{r setup, include=FALSE}
@@ -34,6 +20,108 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-```{r, load-data}
-read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW2/classification-output-data.csv')
-```
+# 1. Download Dataset
+Download the classification output data set (attached in Blackboard to the assignment)
+
+# 2. Confusion Matrix
+The data set has three key columns we will use:
+
+* **class**: the actual class for the observation
+* **scored.class**: the predicted class for the observation (based on a threshold of 0.5)
+* **scored.probability**: the predicted probability of success for the observation
+
+
+Use the table() function to get the raw confusion matrix for this scored dataset. Make sure you understand
+the output. In particular, do the rows represent the actual or predicted class? The columns?
+
+
+# 3. Accuracy
+Write a function that takes the data set as a dataframe, with actual and predicted classifications identified,
+and returns the accuracy of the predictions.
+
+\[
+\textrm{Accuracy} = \frac{TP + TN}{TP + FP + TN + FN}
+\]
+
+Verify that you get an accuracy and an error rate that sums to one.
+
+
+# 4. Classification Error Rate
+Write a function that takes the data set as a dataframe, with actual and predicted classifications identified,
+and returns the classification error rate of the predictions.
+
+\[
+\textrm{Classification Error Rate} = \frac{FP + FN}{TP + FP + TN + FN}
+\]
+
+Verify that you get an accuracy and an error rate that sums to one.
+
+
+
+# 5. Precision
+Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the precision of the predictions.
+
+\[
+\textrm{Precision} = \frac{TP}{TP + FP}
+\]
+
+
+# 6. Sensitivity
+Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the sensitivity of the predictions. Sensitivity is also known as recall.
+
+\[
+\textrm{Sensitivity} = \frac{TP}{TP + FN}
+\]
+
+
+
+# 7. Specificity
+Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the specificity of the predictions.
+
+\[
+\textrm{Specificity} = \frac{TN}{TN + FP}
+\]
+
+
+
+
+
+# 8. \(F_1\) Score
+Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the F1 score of the predictions.
+
+\[
+\textrm{F}_1\;\textrm{Score} = \frac{2 \times \textrm{Precision} \times
+\textrm{Sensitivity}}{\textrm{Precision} + \textrm{Sensitivity}}
+\]
+
+
+# 9. Bounds on \(F_1\) Score
+Before we move on, let’s consider a question that was asked: What are the bounds on the F1 score? Show that the F1 score will always be between 0 and 1. (Hint: If 0<a<1 and 0<b<1 then ab<a)
+
+
+
+# 10. ROC Curve
+Write a function that generates an ROC curve from a data set with a true classification column (class in our example) and a probability column (scored.probability in our example). Your function should return a list that includes the plot of the ROC curve and a vector that contains the calculated area under the curve (AUC). Note that I recommend using a sequence of thresholds ranging from 0 to 1 at 0.01 intervals.
+
+
+
+# 11. Metrics
+Use your **created R functions** and the provided classification output data set to produce all of the classification metrics discussed above.
+
+
+# 12. Caret package
+Investigate the **caret** package. In particular, consider the functions confusionMatrix, sensitivity, and specificity. Apply the functions to the data set. How do the results compare with your own functions.
+
+
+
+
+
+
+# 13. pROC package
+Investigate the **pROC** package. Use it to generate an ROC curve for the data set. How do the results compare with your own functions?
+
+
+
+
+
+
