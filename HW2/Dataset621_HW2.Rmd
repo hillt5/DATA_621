@@ -72,6 +72,34 @@ and returns the accuracy of the predictions.
 \textrm{Accuracy} = \frac{TP + TN}{TP + FP + TN + FN}
 \]
 
+```{r, accuracy-function}
+
+get_accuracy <- function(data_frame) {
+  
+actual.col <- readline(prompt = 'Type the column containing the actual classification:' )
+predicted.col <- readline(prompt = 'Type the column containing the predicted classification:' )  
+
+TP <- sum((data_frame[actual.col] == 1)) - sum((data_frame[actual.col] == 1)[data_frame[predicted.col] == 0]) #all true values minus false negatives
+TN <- sum((data_frame[actual.col] == 0)) - sum((data_frame[actual.col] == 0)[data_frame[predicted.col] == 1]) #all false values minus false positives
+
+denominator <- nrow(data_frame) #the denominator is the same as all observations
+
+result <- (TP + TN)/denominator
+
+return(100*round(result,3))
+
+}
+
+```
+
+
+```{r, accuracy-test}
+
+accuracy <- get_accuracy(dataset_df)
+
+
+```
+
 Verify that you get an accuracy and an error rate that sums to one.
 
 
@@ -83,7 +111,44 @@ and returns the classification error rate of the predictions.
 \textrm{Classification Error Rate} = \frac{FP + FN}{TP + FP + TN + FN}
 \]
 
+
+```{r, error-rate-function}
+
+get_err_rate <- function(data_frame) {
+  
+actual.col <- readline(prompt = 'Type the column containing the actual classification:' )
+predicted.col <- readline(prompt = 'Type the column containing the predicted classification:' )  
+
+FP <- sum((data_frame[actual.col] == 1)) - sum((data_frame[actual.col] == 0)[data_frame[predicted.col] == 0]) #all true values minus true negatives
+FN <- sum((data_frame[actual.col] == 0)) - sum((data_frame[actual.col] == 1)[data_frame[predicted.col] == 1]) #all false values minus true positives
+
+denominator <- nrow(data_frame) #the denominator is the same as all observations
+
+result <- (FP + FN)/denominator
+
+return(100*round(result,3))
+
+}
+
+```
+
+
+```{r, error-rate-test}
+
+error_rate <- get_err_rate(dataset_df)
+
+
+```
+
+
 Verify that you get an accuracy and an error rate that sums to one.
+
+```{r, sums-to-one}
+
+(accuracy + error_rate)/100
+
+
+```
 
 
 
