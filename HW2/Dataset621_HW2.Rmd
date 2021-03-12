@@ -20,8 +20,25 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
+```{r, libraries}
+
+library(dplyr)
+
+
+```
+
+
 # 1. Download Dataset
 Download the classification output data set (attached in Blackboard to the assignment)
+
+
+```{r, dataset}
+
+dataset_df <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW2/classification-output-data.csv')
+
+```
+
+
 
 # 2. Confusion Matrix
 The data set has three key columns we will use:
@@ -33,6 +50,18 @@ The data set has three key columns we will use:
 
 Use the table() function to get the raw confusion matrix for this scored dataset. Make sure you understand
 the output. In particular, do the rows represent the actual or predicted class? The columns?
+
+```{r, confusion-matrix}
+confusion_matrix <- table(dataset_df$class, dataset_df$scored.class)
+
+dimnames(confusion_matrix) <- list(c('Not Diabetic', 'Diabetic'), c('Not Diabetic', 'Diabetic'))
+names(dimnames(confusion_matrix) )<- c('Actual Class', 'Predicted Class')
+
+confusion_matrix
+```
+
+
+The rows represent the actual class, and columns the class predicted by the model. This dataset appears to be based on the Pima Indians dataset, which is being used to classify subjects as diabetic or not.
 
 
 # 3. Accuracy
