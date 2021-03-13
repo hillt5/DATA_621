@@ -55,7 +55,7 @@ the output. In particular, do the rows represent the actual or predicted class? 
 confusion_matrix <- table(dataset_df$class, dataset_df$scored.class)
 
 dimnames(confusion_matrix) <- list(c('Not Diabetic', 'Diabetic'), c('Not Diabetic', 'Diabetic'))
-names(dimnames(confusion_matrix) )<- c('Actual Class', 'Predicted Class')
+names(dimnames(confusion_matrix) )<- c('Actual class', 'Predicted class')
 
 confusion_matrix
 ```
@@ -76,11 +76,10 @@ and returns the accuracy of the predictions.
 
 get_accuracy <- function(data_frame) {
   
-actual.col <- readline(prompt = 'Type the column containing the actual classification:' )
-predicted.col <- readline(prompt = 'Type the column containing the predicted classification:' )  
 
-TP <- sum((data_frame[actual.col] == 1)) - sum((data_frame[actual.col] == 1)[data_frame[predicted.col] == 0]) #all true values minus false negatives
-TN <- sum((data_frame[actual.col] == 0)) - sum((data_frame[actual.col] == 0)[data_frame[predicted.col] == 1]) #all false values minus false positives
+
+TP <- sum((data_frame['class'] == 1)) - sum((data_frame['class'] == 1)[data_frame['scored.class'] == 0]) #all true values minus false negatives
+TN <- sum((data_frame['class'] == 0)) - sum((data_frame['class'] == 0)[data_frame['scored.class'] == 1]) #all false values minus false positives
 
 denominator <- nrow(data_frame) #the denominator is the same as all observations
 
@@ -103,12 +102,12 @@ accuracy <- get_accuracy(dataset_df)
 Verify that you get an accuracy and an error rate that sums to one.
 
 
-# 4. Classification Error Rate
+# 4. 'class'ification Error Rate
 Write a function that takes the data set as a dataframe, with actual and predicted classifications identified,
 and returns the classification error rate of the predictions.
 
 \[
-\textrm{Classification Error Rate} = \frac{FP + FN}{TP + FP + TN + FN}
+\textrm{classification Error Rate} = \frac{FP + FN}{TP + FP + TN + FN}
 \]
 
 
@@ -116,11 +115,9 @@ and returns the classification error rate of the predictions.
 
 get_err_rate <- function(data_frame) {
   
-actual.col <- readline(prompt = 'Type the column containing the actual classification:' )
-predicted.col <- readline(prompt = 'Type the column containing the predicted classification:' )  
 
-FP <- sum((data_frame[actual.col] == 0)) - sum((data_frame[actual.col] == 0)[data_frame[predicted.col] == 0]) #all true values minus true negatives
-FN <- sum((data_frame[actual.col] == 1)) - sum((data_frame[actual.col] == 1)[data_frame[predicted.col] == 1]) #all false values minus true positives
+FP <- sum((data_frame['class'] == 0)) - sum((data_frame['class'] == 0)[data_frame['scored.class'] == 0]) #all true values minus true negatives
+FN <- sum((data_frame['class'] == 1)) - sum((data_frame['class'] == 1)[data_frame['scored.class'] == 1]) #all false values minus true positives
 
 denominator <- nrow(data_frame) #the denominator is the same as all observations
 
@@ -162,12 +159,9 @@ Write a function that takes the data set as a dataframe, with actual and predict
 ```{r, precision-function}
 
 get_precision <- function(data_frame) {
-  
-actual.col <- readline(prompt = 'Type the column containing the actual classification:' )
-predicted.col <- readline(prompt = 'Type the column containing the predicted classification:' )  
 
-TP <- sum((data_frame[actual.col] == 1)) - sum((data_frame[actual.col] == 1)[data_frame[predicted.col] == 0]) #all true values minus false negatives
-FP <- sum((data_frame[actual.col] == 0)) - sum((data_frame[actual.col] == 0)[data_frame[predicted.col] == 0]) #all false values minus true negatives
+TP <- sum((data_frame['class'] == 1)) - sum((data_frame['class'] == 1)[data_frame['scored.class'] == 0]) #all true values minus false negatives
+FP <- sum((data_frame['class'] == 0)) - sum((data_frame['class'] == 0)[data_frame['scored.class'] == 0]) #all false values minus true negatives
 
 
 result <- TP/(TP + FP)
@@ -197,11 +191,10 @@ Write a function that takes the data set as a dataframe, with actual and predict
 
 get_sensitivity <- function(data_frame) {
   
-actual.col <- readline(prompt = 'Type the column containing the actual classification:' )
-predicted.col <- readline(prompt = 'Type the column containing the predicted classification:' )  
+ 
 
-TP <- sum((data_frame[actual.col] == 1)) - sum((data_frame[actual.col] == 1)[data_frame[predicted.col] == 0]) #all true values minus false negatives
-FN <- sum((data_frame[actual.col] == 1)) - sum((data_frame[actual.col] == 1)[data_frame[predicted.col] == 1]) #all false values minus true positives
+TP <- sum((data_frame['class'] == 1)) - sum((data_frame['class'] == 1)[data_frame['scored.class'] == 0]) #all true values minus false negatives
+FN <- sum((data_frame['class'] == 1)) - sum((data_frame['class'] == 1)[data_frame['scored.class'] == 1]) #all false values minus true positives
 
 
 result <- TP/(TP + FN)
@@ -230,11 +223,9 @@ Write a function that takes the data set as a dataframe, with actual and predict
 
 get_specificity <- function(data_frame) {
   
-actual.col <- readline(prompt = 'Type the column containing the actual classification:' )
-predicted.col <- readline(prompt = 'Type the column containing the predicted classification:' )  
 
-TN <- sum((data_frame[actual.col] == 0)) - sum((data_frame[actual.col] == 0)[data_frame[predicted.col] == 1]) #all false values minus false positives
-FP <- sum((data_frame[actual.col] == 0)) - sum((data_frame[actual.col] == 0)[data_frame[predicted.col] == 0]) #all true values minus true negatives
+TN <- sum((data_frame['class'] == 0)) - sum((data_frame['class'] == 0)[data_frame['scored.class'] == 1]) #all false values minus false positives
+FP <- sum((data_frame['class'] == 0)) - sum((data_frame['class'] == 0)[data_frame['scored.class'] == 0]) #all true values minus true negatives
 
 
 result <- TN/(TN + FP)
@@ -266,13 +257,12 @@ Write a function that takes the data set as a dataframe, with actual and predict
 
 get_f1 <- function(data_frame) {
   
-actual.col <- readline(prompt = 'Type the column containing the actual classification:' )
-predicted.col <- readline(prompt = 'Type the column containing the predicted classification:' )  
+  
 
-TP <- sum((data_frame[actual.col] == 1)) - sum((data_frame[actual.col] == 1)[data_frame[predicted.col] == 0]) #all true values minus false negatives
-TN <- sum((data_frame[actual.col] == 0)) - sum((data_frame[actual.col] == 0)[data_frame[predicted.col] == 1]) #all false values minus false positives
-FP <- sum((data_frame[actual.col] == 0)) - sum((data_frame[actual.col] == 0)[data_frame[predicted.col] == 0]) #all true values minus true negatives
-FN <- sum((data_frame[actual.col] == 1)) - sum((data_frame[actual.col] == 1)[data_frame[predicted.col] == 1]) #all false values minus true positives
+TP <- sum((data_frame['class'] == 1)) - sum((data_frame['class'] == 1)[data_frame['scored.class'] == 0]) #all true values minus false negatives
+TN <- sum((data_frame['class'] == 0)) - sum((data_frame['class'] == 0)[data_frame['scored.class'] == 1]) #all false values minus false positives
+FP <- sum((data_frame['class'] == 0)) - sum((data_frame['class'] == 0)[data_frame['scored.class'] == 0]) #all true values minus true negatives
+FN <- sum((data_frame['class'] == 1)) - sum((data_frame['class'] == 1)[data_frame['scored.class'] == 1]) #all false values minus true positives
 
 sensitivity <- TN/(TN + FP)
 precision <-  TP/(TP + FP)
@@ -302,7 +292,19 @@ The minimum f1 score is zero, and the maximum is one. The previous f1 score is c
 # 10. ROC Curve
 Write a function that generates an ROC curve from a data set with a true classification column (class in our example) and a probability column (scored.probability in our example). Your function should return a list that includes the plot of the ROC curve and a vector that contains the calculated area under the curve (AUC). Note that I recommend using a sequence of thresholds ranging from 0 to 1 at 0.01 intervals.
 
+```{r get-roc-curve}
 
+get_roc <- function(data_frame) {
+  
+
+  
+  plot()
+  
+  
+}
+
+head(dataset_df)
+```
 
 # 11. Metrics
 Use your **created R functions** and the provided classification output data set to produce all of the classification metrics discussed above.
