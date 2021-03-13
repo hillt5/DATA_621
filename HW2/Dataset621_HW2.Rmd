@@ -310,11 +310,43 @@ head(dataset_df)
 Use your **created R functions** and the provided classification output data set to produce all of the classification metrics discussed above.
 
 
+
+
 # 12. Caret package
 Investigate the **caret** package. In particular, consider the functions confusionMatrix, sensitivity, and specificity. Apply the functions to the data set. How do the results compare with your own functions.
 
 
+```{r caret}
+library(caret)
 
+confusionMatrix(as.factor(dataset_df$scored.class),
+                as.factor(dataset_df$class),
+                positive = '1')
+```
+
+                          
+```{r posPredValue}
+# Precision
+posPredValue(as.factor(dataset_df$scored.class),
+            as.factor(dataset_df$class),
+            positive = '1')
+```
+
+
+```{r sensitivity}
+# Sensitivity
+sensitivity(as.factor(dataset_df$scored.class),
+            as.factor(dataset_df$class),
+            positive = '1')
+```
+
+
+```{r specificity}
+# specificity
+specificity(as.factor(dataset_df$scored.class),
+            as.factor(dataset_df$class),
+            negative = '0')
+```
 
 
 
@@ -322,6 +354,11 @@ Investigate the **caret** package. In particular, consider the functions confusi
 Investigate the **pROC** package. Use it to generate an ROC curve for the data set. How do the results compare with your own functions?
 
 
+```{r proc}
+library(pROC)
+
+plot(roc(dataset_df, class, scored.probability))
+```
 
 
 
