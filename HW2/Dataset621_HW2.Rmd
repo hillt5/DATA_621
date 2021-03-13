@@ -102,7 +102,7 @@ accuracy <- get_accuracy(dataset_df)
 Verify that you get an accuracy and an error rate that sums to one.
 
 
-# 4. 'class'ification Error Rate
+# 4. classification Error Rate
 Write a function that takes the data set as a dataframe, with actual and predicted classifications identified,
 and returns the classification error rate of the predictions.
 
@@ -295,16 +295,57 @@ Write a function that generates an ROC curve from a data set with a true classif
 ```{r get-roc-curve}
 
 get_roc <- function(data_frame) {
+
+  class <- data_frame['class']
+  probability <- data_frame['scored.probability']
   
+  threshold <- seq(0,1, 0.01)
+    
+  
+  x_axis <- vector()
+  y_axis <- vector() 
+  
+  for (i in 1:length(threshold)) #iterate over classification thresholds
+  
+  {
+
+    TP <- sum((probability >= threshold[i]) & (class == 1)) #threshold met and real classification = true
+    TN <- sum((probability < threshold[i]) & (class == 0)) #threshold not met and real classification = false
+    FP <- sum((probability >= threshold[i]) & (class == 0)) #threshold met and real classification = false
+    FN <- sum((probability < threshold[i]) & (class == 1)) #threshold not met but real classification  = true
+    
+      FPR <- 1 - TN/(TN + FP) # 1- specificity
+      TPR <- TP/(TP + FN)   #total positive rate
+    
+    
+      x_axis[i] <- FPR
+      y_axis[i] <- TPR
+      
+    }
+
+  roc_graph <- plot(x_axis, y_axis,type = 's') + abline(0,1) #s-type graph is stair/step plot
 
   
-  plot()
+  ###Tom -  still need to calculate AUC
   
+
+  return(roc_graph)
   
 }
 
-head(dataset_df)
+
+
 ```
+
+
+```{r, ROC-test}
+
+get_roc(dataset_df)
+
+
+```
+
+
 
 # 11. Metrics
 Use your **created R functions** and the provided classification output data set to produce all of the classification metrics discussed above.
