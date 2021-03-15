@@ -33,6 +33,7 @@ library(corrplot)
 library(MASS)
 library(caret)
 library(e1071)
+library(ROCR)
 
         
 set.seed(2012)
@@ -47,7 +48,7 @@ crime_eval <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master
 ```{r, crime-df}
 
 head(crime_training)
-
+dim(crime_training)
 
 ```
 
@@ -68,3 +69,62 @@ Explanation of features:
  lstat: lower status of the population (percent) (predictor variable)
  medv: median value of owner-occupied homes in $1000s (predictor variable)
  target: whether the crime rate is above the median crime rate (1) or not (0) (response variable)
+
+This also appears to be a public dataset available through Carnegie Mellon University <http://lib.stat.cmu.edu/datasets/boston>.  The original white paper was a 1978 study published in the _Journal of Environmental Economics and Management_, which was interested in the marginal price consumers would pay for improved air quality. The communities studied were in the greater Boston area.
+
+```{r, summary}
+
+summary(crime_training)
+
+```
+
+Looking at summary statistics, there are several proportions, like znn, indus, age, and lstat.  There is also a dummy variable, chas, for whether the community borders the Charles River. There are also no missing values.
+
+```{r, histograms}
+
+plot_histogram(crime_training)
+
+```
+
+
+Looking at feature distributions, no variable appears particularly normal. There are several variables with single overrepresented values, like indus, ptratio, rad, tax, and zn. In the case of zn, this appears to be for communities with no industrial zoning.
+
+```{r, corrplot}
+
+corrplot(cor(crime_training))
+
+```
+
+Our target variable, crime rate > median, has several strong correlations with predictors. These include NO concentrations, age of dwellings, accessibility to highways, and property tax rate. It is negatively correlated with distance to metro employment centers.  There are also some variables that are strongly correlated with other predictors, including indus, nox, age, and dis. In particular,access to highways and property tax rate appear strongly correlated.
+
+
+```{r, nox-vs-rad}
+
+
+ggplot(crime_training, aes(rad, nox)) +
+  geom_point() +
+  geom_smooth(se = FALSE, method = 'lm' )
+```
+
+
+```{r, tax-vs-rad}
+
+
+ggplot(crime_training, aes(rad, tax)) +
+  geom_point() +
+  geom_smooth(se = FALSE, method = 'lm' )
+```
+
+On second look, there appears to be two outlying points from the major cluster of datapoints.
+
+
+
+```{r, first-model}
+
+crime_glm <- glm(crime_training, family = 'binomial', formula = target ~.)
+
+summary(crime_glm)
+
+```
+
+Without any transformations, it appears NO concentrations are a strong predictor of crime. Nearby highways are also correlated
