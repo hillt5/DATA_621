@@ -1,21 +1,17 @@
-
 ---
 title: "Data 621 - HW1"
 author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
 date: "2/26/2021"
 output:
-  word_document:
-    toc: yes
-    toc_depth: '2'
+  pdf_document:
+    toc: TRUE
+    toc_depth: 2 
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
-  pdf_document:
-    toc: yes
-    toc_depth: 2
 ---
 
 ```{r setup, include=FALSE}

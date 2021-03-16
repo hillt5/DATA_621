@@ -1,0 +1,188 @@
+---
+title: "Blog 1"
+author: "Thomas Hill"
+date: "March 11, 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, library}
+
+library(norm)
+
+
+```
+
+
+The treatment of missing values is an important element of data science. Identifying missing values - whether they're coded as NA, zero, or some other stand-in value, is an important first step in addition to obtaining summary statistics and visualization of data.  In DATA 621, missing values have been explored in several ways so far: designating the types of missing data as well and consequently deciding what method, if any, is the best of imputing the data. 
+
+For today’s entry, I would like to discuss a solution to the problem of deciding whether data is missing completely at random (MCAR). This type of missing data differ from other types as it introduces no bias into the model. By contrast, Linear Models with R defines alternative scenarios: missing at random (MAR) and missing not at random (MNAR). MAR and MCAR are both independent of unobserved data, but MAR may be dependent on a feature characterized in the original dataset. This would include effects of age, gender, or socioeconomic status on survey results. In the MAR case, missing values can be imputed conditionally by using the rest of observed data.
+
+ 
+
+Missing not at random is not able to be controlled because it is dependent on an element not captured in the original dataset. For example, HW1 had many missing values that at first glance seemed suspiciously coincident with each other. I had an early suspicion that this had to do with a time effect of the underlying dataset: major league baseball records spanned over 100 years, with tangible differences in game strategy and collection of statistics. Since season year was not included, this was an unobservable variable. LMR offers a good cursory strategy: visualize the missing values by case and identify major patterns that would violate MCAR. 
+
+```{r, load-csv}
+baseball_df <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW1/moneyball-training-data.csv')
+
+```
+
+```{r, missing-values-viz} 
+
+image(is.na(baseball_df),axes=FALSE,col=gray(1:0))
+axis(2, at=0:16/16, labels=colnames(baseball_df))
+axis(1, at=0:2275/2275, labels=row.names(baseball_df),las=2)
+
+``` 
+
+This datset has several thousand entries, however there are clear patterns to missing values. There appear to three or four features affected, with overlap between many of them and potentially 1:1 matching for two features. There is also a clear repeating pattern which may indicate that the underlying dataframe was a mixture of several datasets or perhaps a time series, and was 'shuffled' and reassigned under a different index.
+
+In cases when the dataset is too large to visualize, there is also a statistical test available to test for independence of missing values. Little’s test forms a contingency table using all features in a model and the expected number of missing values if values were MCAR. Then, a chi-square test statistic can be calculated and a p-value can be obtained. If the test statistic is large, the p-value will be low and the null hypothesis of independence/MCAR can be rejected. For this assignment, I'm using  code I found on GitHub, sourced below: Looking back at our HW1 example: 
+
+
+```{r, little-test}
+
+mcar <- function(x){ 
+	if(!require(norm)) {
+		stop("You must have norm installed to use LittleMCAR") 
+	} 
+
+	# if(!require(data.table)) {
+	# 	stop("Please install the R-package data.table to use mcar")
+	# }
+
+	if(!(is.matrix(x) | is.data.frame(x))) {
+		stop("Data should be a matrix or dataframe")
+	}
+
+	if (is.data.frame(x)){
+		x <- data.matrix(x)
+	}
+
+	# delete rows of complete missingness
+	foo <- function(x) return(any(!is.na(x)))
+	dd <- apply(X = x, MARGIN = 1L, FUN = foo)
+	dd <- which(!dd, arr.ind = TRUE)
+	if(length(dd) > 0) 
+		x <- x[-dd,]
+
+	# define variables        
+	n.var <- ncol(x) # number of variables
+	n <- nrow(x)  #number of respondents
+	var.names <- colnames(x)
+	r <- 1 * is.na(x)
+
+	nmis <- as.integer(apply(r, 2, sum))  #number of missing data for each variable REWRITE
+	mdp <- (r %*% (2^((1:n.var - 1)))) + 1  #missing data patterns
+	x.mp <- data.frame(cbind(x,mdp)) # add column indicating pattern
+	colnames(x.mp) <- c(var.names,"MisPat") # set name of new column to MisPat
+	n.mis.pat <- length(unique(x.mp$MisPat)) # number of missing data patterns
+	p <- n.mis.pat-1 # number of Missing Data patterns minus 1 (complete data row)
+
+
+	s <- prelim.norm(x)
+	ll <- em.norm(s)
+	fit <- getparam.norm(s = s, theta = ll)
+
+	# gmean<-mlest(x)$muhat #ML estimate of grand mean (assumes Normal dist)
+	gmean <- fit$mu
+	# gcov<-mlest(x)$sigmahat #ML estimate of grand covariance (assumes Normal dist)
+	gcov <- fit$sigma
+	colnames(gcov) <- rownames(gcov) <- colnames(x)
+
+	#recode MisPat variable to go from 1 through n.mis.pat
+	x.mp$MisPat2 <- rep(NA,n)
+	for (i in 1:n.mis.pat){ 
+		x.mp$MisPat2[x.mp$MisPat == sort(unique(x.mp$MisPat), partial=(i))[i]]<- i 
+	}
+
+	x.mp$MisPat<-x.mp$MisPat2
+	x.mp<-x.mp[ , -which(names(x.mp) %in% "MisPat2")]
+
+	#make list of datasets for each pattern of missing data
+	datasets <- list() 
+	for (i in 1:n.mis.pat){
+		datasets[[paste("DataSet",i,sep="")]]<-x.mp[which(x.mp$MisPat==i),1:n.var]
+	}
+
+	#degrees of freedom
+	kj<-0
+	for (i in 1:n.mis.pat){	
+		no.na<-as.matrix(1* !is.na(colSums(datasets[[i]]))) 
+		kj<-kj+colSums(no.na) 
+	}
+
+	df<-kj -n.var
+
+	#Little's chi-square
+	d2<-0
+
+
+	# this crashes at the missingness pattern where every column is missing
+	# this for-loop can be handled faster with plyr-function
+	for (i in 1:n.mis.pat){	
+		mean <- (colMeans(datasets[[i]])-gmean) 
+		mean <- mean[!is.na(mean)] 
+		keep <- 1* !is.na(colSums(datasets[[i]])) 
+		keep <- keep[which(keep[1:n.var]!=0)] 
+		cov <- gcov 
+		cov <- cov[which(rownames(cov) %in% names(keep)) , which(colnames(cov) %in% names(keep))] 
+		d2 <- as.numeric(d2+(sum(x.mp$MisPat==i)*(t(mean)%*%solve(cov)%*%mean)))
+	}
+
+	#p-value for chi-square
+	p.value<-1-pchisq(d2,df)
+
+	#descriptives of missing data
+	amount.missing <- matrix(nmis, 1, length(nmis))
+	percent.missing <- amount.missing/n
+	amount.missing <- rbind(amount.missing,percent.missing)
+	colnames(amount.missing) <- var.names
+	rownames(amount.missing) <- c("Number Missing", "Percent Missing")
+
+	list(chi.square = d2, 
+	     df = df, 
+	     p.value = p.value, 
+	     missing.patterns = n.mis.pat, 
+	     amount.missing = amount.missing, 
+	     data = datasets)
+}
+
+``` 
+
+
+```{r, run-test, results = FALSE}
+
+test_results <- mcar(baseball_df)
+
+
+```
+
+
+``` {r, test-results}
+
+print(test_results$chi.square)
+
+print(test_results$p.value)
+
+
+```
+
+The test statistic supports the conclusion graphically that these values are not MCAR. Little’s test offers a quick method of determining whether missing values have a pattern or not. Based on its significance, it may behoove the data scientist to determine whether the missing values are contingent on observable or unobservable variables. 
+
+ 
+
+https://cpb-us-w2.wpmucdn.com/blog.nus.edu.sg/dist/4/6502/files/2018/06/mcartest-zlxtj7.pdf 
+
+ 
+Source 
+ 
+Code from Github: https://github.com/rcst/little-test/blob/master/mcar.R 
+
+ 
+https://cpb-us-w2.wpmucdn.com/blog.nus.edu.sg/dist/4/6502/files/2018/06/mcartest-zlxtj7.pdf 
+
+

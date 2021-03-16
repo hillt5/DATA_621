@@ -1,0 +1,172 @@
+---
+title: "Blog 2"
+author: "Thomas Hill"
+date: "March 11, 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+A bimodal distribution is a special case of a multimodal distribution that features two values of a given value or value range. When visualized as a histogram, these can appear as simply as two distinct bell curves, or more commonly as a dataset with a relative minimum somewhere in the middle of the histogram. Bimodal distributions are notable because they may indicate that another variable is interacting. Adult height is the classic example of a bimodal distribution, because sex interacts with otherwise predictable parameters. Other examples include age of diagnosis of breast and blood cancers, and diurnal cycles (road congestion, water and electricity usage). 
+
+For example, in HW1 there were three bimodal distributions to consider: TEAM_BATTING_HR, TEAM_BATTING_SO, and TEAM_PITCHING_HR. Even after changing bin widths, the bimodal distribution persisted. By omitting or transforming these features to approximate a normal distribution, this would lose potentially crucial information about baseball team performance. Here are the ideas I considered to model bimodal features. 
+
+```{r, libraries}
+
+library(dplyr)
+library(ggplot2)
+library(mixtools)
+library(tidyr)
+
+```
+
+
+```{r, load-csv}
+
+baseball_df <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW1/moneyball-training-data.csv')
+
+```
+
+
+```{r, bimodal-hist} 
+
+hist(baseball_df$TEAM_BATTING_HR)
+hist(baseball_df$TEAM_BATTING_SO)
+hist(baseball_df$TEAM_PITCHING_HR)
+ 
+``` 
+
+My first idea was to demonstrate graphically that values could be separated by another model feature. I had an existing concern that missing values were not random and potentially based on changes to MLB strategy and recordkeeping. To test this, I plotted a histogram that colored the values by a dummy variable defined as missing versus not missing values.  
+
+```{r, cs-missing-values}
+
+
+baseball_no_cs <- baseball_df %>%    
+  filter(is.na(TEAM_BASERUN_CS)) %>% #missing values for hbp
+  dplyr::select(-TEAM_BASERUN_CS)  ## select all rows except hbp
+
+
+
+baseball_cs <- baseball_df %>%
+  filter(!is.na(TEAM_BASERUN_CS)) #not missing values for hbp
+
+```
+
+
+```{r, compare-pitching-hr}
+
+baseball_cs_dummy <- baseball_df %>%
+  mutate(TEAM_CS_YES_NO = case_when(!is.na(TEAM_BASERUN_CS) ~ 'Has CS record', is.na(TEAM_BASERUN_CS) ~ 'Has no CS record')) 
+
+ggplot(baseball_cs_dummy, aes(x = TEAM_PITCHING_HR, fill = TEAM_CS_YES_NO)) +
+  geom_histogram() +
+  theme(legend.position = 'none')
+
+ggplot(baseball_cs_dummy, aes(x = TEAM_PITCHING_HR)) +
+  geom_histogram()
+
+```
+
+```{r, compare-pitching-hr-split}
+
+ggplot(baseball_cs_dummy, aes(TEAM_PITCHING_HR, fill = TEAM_CS_YES_NO)) +
+  ggtitle('Team Pitching Home Runs, separated by CS statistic') +
+  geom_density(alpha = 0.4)
+  
+  
+```
+
+```{r, compare-batting-hr}
+
+
+ggplot(baseball_cs_dummy, aes(x = TEAM_BATTING_HR, fill = TEAM_CS_YES_NO)) +
+  geom_histogram() +
+  theme(legend.position = 'none')
+
+ggplot(baseball_df, aes(x = TEAM_BATTING_HR)) +
+  geom_histogram()
+
+```
+
+
+```{r, compare-batting-hr-split}
+
+ggplot(baseball_cs_dummy, aes(TEAM_BATTING_HR, fill = TEAM_CS_YES_NO)) +
+  ggtitle('Team Batting Home Runs, separated by CS statistic') +
+  geom_density(alpha = 0.4)
+  
+ 
+```
+
+
+```{r, compare-batting-so}
+
+
+ggplot(baseball_cs_dummy, aes(x = TEAM_BATTING_SO, fill = TEAM_CS_YES_NO)) +
+  geom_histogram() +
+  theme(legend.position = 'none')
+
+ggplot(baseball_df, aes(x = TEAM_BATTING_SO)) +
+  geom_histogram()
+
+```
+
+```{r, compare-batting-so-split}
+
+ggplot(baseball_cs_dummy, aes(TEAM_BATTING_SO, fill = TEAM_CS_YES_NO)) +
+  ggtitle('Team Batting Strike Outs, separated by CS statistic') +
+  geom_density(alpha = 0.4)
+  
+ 
+```
+
+
+While there is some overlap between the two modes, this is to be expected from two overlying normal distributions. When plotted separately, the resulting histograms are approximately normal. Next, I’ll use a t-statistic to test the hypothesis that these values could be drawn from the same population. The Welch's t-test
+
+ 
+
+```{r, bimodal-t-test} 
+print('TEAM_BATTING_HR')
+t.test(baseball_cs_dummy$TEAM_BATTING_HR[baseball_cs_dummy$TEAM_CS_YES_NO == 'Has CS record'], baseball_cs_dummy$TEAM_BATTING_HR[baseball_cs_dummy$TEAM_CS_YES_NO == 'Has no CS record'])
+print('TEAM_PITCHING_HR')
+t.test(baseball_cs_dummy$TEAM_PITCHING_HR[baseball_cs_dummy$TEAM_CS_YES_NO == 'Has CS record'], baseball_cs_dummy$TEAM_PITCHING_HR[baseball_cs_dummy$TEAM_CS_YES_NO == 'Has no CS record'])
+print('TEAM_BATTING_SO')
+t.test(baseball_cs_dummy$TEAM_BATTING_SO[baseball_cs_dummy$TEAM_CS_YES_NO == 'Has CS record'], baseball_cs_dummy$TEAM_BATTING_SO[baseball_cs_dummy$TEAM_CS_YES_NO == 'Has no CS record'])
+
+``` 
+
+ 
+All three statistics conclude it's unlikely these partitions of the data have the same mean. The t.test function also gives us the mean of each group as well.
+
+
+
+
+Another more empiric method would be to estimate the new parameters of the two underlying distributions, then model the results as two separate features. For simplicity, I will consider TEAM_BATTING_SO because the variance appears equivalent for the underlying groups. 
+
+```{r, mixtools-model} 
+
+sd_so_record <- sd(baseball_cs_dummy$TEAM_BATTING_SO[baseball_cs_dummy$TEAM_CS_YES_NO == 'Has CS record'])
+sd_so_no_record <- sd(baseball_cs_dummy$TEAM_BATTING_SO[baseball_cs_dummy$TEAM_CS_YES_NO == 'Has no CS record'], na.rm = TRUE)
+
+sd_so_record
+sd_so_no_record
+
+batting_so_mix <- normalmixEM(baseball_df$TEAM_BATTING_SO[!is.na(baseball_df$TEAM_BATTING_SO)], lambda = 0.5, mu = c(517.1955, 832.9023), sigma = c(sd_so_record, sd_so_no_record)) 
+
+
+plot(batting_so_mix, density = TRUE)
+
+``` 
+
+ 
+
+From here, there are options to model the difference. A new feature called TEAM_BATTING_SO_BIMODAL could be created, which provides a probability that a given entry falls into category A or B. For example, for low values this value could be close to zero and increase to near certainty once past the second mode. Values in the middle would have probabilities closer to 0.5. Another more labor intensive option would be to dissect the dataset temporarily and identify differences in summary statistics and correlations for the remaining variables. Finally, if there little to no overlap between the two distributions, they could be modeled using a binary dummy variable based off an intermodal threshold. This strategy would also benefit from finding correlations to the new dummy variable that would identify which observable values are causing the bimodal distribution, if any. 
+
+
+
+Sources:
+
+https://cran.r-project.org/web/packages/mixtools/vignettes/mixtools.pdf 
+

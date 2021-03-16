@@ -1,0 +1,42 @@
+---
+title: "Data 621 - HW4"
+author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
+date: "5/2/2021"
+output:
+  pdf_document:
+    toc: TRUE
+    toc_depth: 2 
+  html_document:
+    highlight: pygments
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, error=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r loadData, include=FALSE}
+
+
+# Libraries
+library(dplyr)
+library(GGally)
+library(ggplot2)
+library(readr)
+library(reshape2)
+library(purrr)
+library(tidyr)
+library(corrplot)
+library(MASS)
+library(caret)
+library(Hmisc)
+library(e1071)
+library(Amelia)
+        
+set.seed(2012)
+
+
+```
