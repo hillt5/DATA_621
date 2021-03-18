@@ -326,10 +326,22 @@ get_roc <- function(data_frame) {
   roc_graph <- plot(x_axis, y_axis,type = 's') + abline(0,1) #s-type graph is stair/step plot
 
   
-  ###Tom -  still need to calculate AUC
+  #Calculate AUC
+  auc <- 0
+  for (i in 1:length(x_axis)){
+    if(i==length(x_axis)){
+      auc <- auc
+    }
+    else if(y_axis[i] == 0){
+      next
+    }
+    else{
+      auc <- auc + ((x_axis[i]-x_axis[i+1])*y_axis[i])
+    }
+  }
+  results <- list(c(auc),roc_graph)
   
-
-  return(roc_graph)
+  return(results)
   
 }
 
@@ -350,12 +362,40 @@ get_roc(dataset_df)
 # 11. Metrics
 Use your **created R functions** and the provided classification output data set to produce all of the classification metrics discussed above.
 
+```{r accuracy}
+accuracy <- get_accuracy(dataset_df)
+accuracy
+```
 
+```{r classification-error-rate}
+error_rate <- get_err_rate(dataset_df)
+error_rate
+```
 
+```{r precision}
+precision <- get_precision(dataset_df)
+precision
+```
+
+```{r sensitivity1}
+sensitivity <- get_sensitivity(dataset_df)
+sensitivity
+```
+
+```{r specificity1}
+specificity <- get_specificity(dataset_df)
+specificity
+```
+
+```{r f1}
+f1 <- get_f1(dataset_df)
+f1
+```
 
 # 12. Caret package
 Investigate the **caret** package. In particular, consider the functions confusionMatrix, sensitivity, and specificity. Apply the functions to the data set. How do the results compare with your own functions.
 
+The **confusionMatrix()** function puts the actual class in the columns and the predicted class in the rows, which is the opposite of the **table()** function.  The results from the functions here match our results.
 
 ```{r caret}
 library(caret)
@@ -394,11 +434,15 @@ specificity(as.factor(dataset_df$scored.class),
 # 13. pROC package
 Investigate the **pROC** package. Use it to generate an ROC curve for the data set. How do the results compare with your own functions?
 
-
+This function has the specificity plotted on the x-axis seen from 1.0 to 0.0.  We plotted (1-specificity) on the x-axis.  This doesn't change the plotted points, only the x-axis label.  The AUC calculated here, 0.8503, which is very close to our value for AUC, 0.8539898.
 ```{r proc}
 library(pROC)
 
-plot(roc(dataset_df, class, scored.probability))
+roc <- roc(dataset_df, class, scored.probability)
+par(pty="s")
+plot(roc)
+auc(roc)
+
 ```
 
 
