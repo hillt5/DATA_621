@@ -287,7 +287,7 @@ f1
 # 9. Bounds on \(F_1\) Score
 Before we move on, let’s consider a question that was asked: What are the bounds on the F1 score? Show that the F1 score will always be between 0 and 1. (Hint: If 0<a<1 and 0<b<1 then ab<a)
 
-The minimum f1 score is zero, and the maximum is one. The previous f1 score is closer to the maximum than the minimum score
+The minimum f1 score is zero, and the maximum is one. There is only one case in which f1 is equal to 1, which is when sensitivity and precision are both equal to 1.  In this case, all true classes are detected. The f1 score is zero in cases when either precision or sensitivity are zero. A score of zero for either would indicate the classifier is missing all true classes, positive or negative. The f1 score is an average of precision and sensitivity, each having equal weights. Alternative weights could be considered when detection of true positives is more important, and vice versa.
 
 # 10. ROC Curve
 Write a function that generates an ROC curve from a data set with a true classification column (class in our example) and a probability column (scored.probability in our example). Your function should return a list that includes the plot of the ROC curve and a vector that contains the calculated area under the curve (AUC). Note that I recommend using a sequence of thresholds ranging from 0 to 1 at 0.01 intervals.
