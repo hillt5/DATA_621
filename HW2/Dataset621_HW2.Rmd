@@ -3,43 +3,36 @@ title: "Data621 - HW2"
 author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
 date: "3/21/2021"
 output:
+  pdf_document:
+    toc: yes
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
-  pdf_document:
-    toc: yes
 subtitle: 'Group 4'
 ---
 
-
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(error=FALSE, warning=FALSE, message=FALSE)
 ```
 
-
-```{r, libraries}
-
+```{r libraries, include=FALSE}
 library(dplyr)
-
-
+library(pROC)
+library(caret)
 ```
+
+
 
 
 # 1. Download Dataset
 Download the classification output data set (attached in Blackboard to the assignment)
 
-
-```{r, dataset}
-
+```{r dataset}
 dataset_df <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW2/classification-output-data.csv')
-
 ```
-
-
-
 # 2. Confusion Matrix
 The data set has three key columns we will use:
 
@@ -47,11 +40,10 @@ The data set has three key columns we will use:
 * **scored.class**: the predicted class for the observation (based on a threshold of 0.5)
 * **scored.probability**: the predicted probability of success for the observation
 
-
 Use the table() function to get the raw confusion matrix for this scored dataset. Make sure you understand
 the output. In particular, do the rows represent the actual or predicted class? The columns?
 
-```{r, confusion-matrix}
+```{r,confusion-matrix,include=TRUE}
 confusion_matrix <- table(dataset_df$class, dataset_df$scored.class)
 
 dimnames(confusion_matrix) <- list(c('Not Diabetic', 'Diabetic'), c('Not Diabetic', 'Diabetic'))
@@ -60,9 +52,7 @@ names(dimnames(confusion_matrix) )<- c('Actual class', 'Predicted class')
 confusion_matrix
 ```
 
-
 The rows represent the actual class, and columns the class predicted by the model. This dataset appears to be based on the Pima Indians dataset, which is being used to classify subjects as diabetic or not.
-
 
 # 3. Accuracy
 Write a function that takes the data set as a dataframe, with actual and predicted classifications identified,
@@ -71,38 +61,22 @@ and returns the accuracy of the predictions.
 \[
 \textrm{Accuracy} = \frac{TP + TN}{TP + FP + TN + FN}
 \]
-
-```{r, accuracy-function}
-
+```{r accuracy-function}
 get_accuracy <- function(data_frame) {
-  
-
-
 TP <- sum((data_frame['class'] == 1)) - sum((data_frame['class'] == 1)[data_frame['scored.class'] == 0]) #all true values minus false negatives
 TN <- sum((data_frame['class'] == 0)) - sum((data_frame['class'] == 0)[data_frame['scored.class'] == 1]) #all false values minus false positives
-
 denominator <- nrow(data_frame) #the denominator is the same as all observations
-
 result <- (TP + TN)/denominator
-
 return(100*round(result,3))
-
 }
-
-```
-
-
-```{r, accuracy-test}
-
 accuracy <- get_accuracy(dataset_df)
-
-
+accuracy
 ```
 
 Verify that you get an accuracy and an error rate that sums to one.
 
 
-# 4. classification Error Rate
+# 4. Classification Error Rate
 Write a function that takes the data set as a dataframe, with actual and predicted classifications identified,
 and returns the classification error rate of the predictions.
 
@@ -111,11 +85,8 @@ and returns the classification error rate of the predictions.
 \]
 
 
-```{r, error-rate-function}
-
+```{r error-rate-function}
 get_err_rate <- function(data_frame) {
-  
-
 FP <- sum((data_frame['class'] == 0)) - sum((data_frame['class'] == 0)[data_frame['scored.class'] == 0]) #all true values minus true negatives
 FN <- sum((data_frame['class'] == 1)) - sum((data_frame['class'] == 1)[data_frame['scored.class'] == 1]) #all false values minus true positives
 
@@ -124,30 +95,17 @@ denominator <- nrow(data_frame) #the denominator is the same as all observations
 result <- (FP + FN)/denominator
 
 return(100*round(result,3))
-
 }
-
-```
-
-
-```{r, error-rate-test}
-
 error_rate <- get_err_rate(dataset_df)
-
-
+error_rate
 ```
 
 
 Verify that you get an accuracy and an error rate that sums to one.
 
-```{r, sums-to-one}
-
+```{r sums-to-one}
 (accuracy + error_rate)/100
-
-
 ```
-
-
 
 # 5. Precision
 Write a function that takes the data set as a dataframe, with actual and predicted classifications identified, and returns the precision of the predictions.
@@ -156,23 +114,14 @@ Write a function that takes the data set as a dataframe, with actual and predict
 \textrm{Precision} = \frac{TP}{TP + FP}
 \]
 
-```{r, precision-function}
-
+```{r precision-function}
 get_precision <- function(data_frame) {
-
 TP <- sum((data_frame['class'] == 1)) - sum((data_frame['class'] == 1)[data_frame['scored.class'] == 0]) #all true values minus false negatives
 FP <- sum((data_frame['class'] == 0)) - sum((data_frame['class'] == 0)[data_frame['scored.class'] == 0]) #all false values minus true negatives
-
-
 result <- TP/(TP + FP)
-
 return(100*round(result,3))
 
 }
-
-```
-
-```{r, precision-test}
 
 precision <- get_precision(dataset_df)
 
@@ -187,25 +136,13 @@ Write a function that takes the data set as a dataframe, with actual and predict
 \textrm{Sensitivity} = \frac{TP}{TP + FN}
 \]
 
-```{r, sensitivity-function}
-
+```{r sensitivity}
 get_sensitivity <- function(data_frame) {
-  
- 
-
 TP <- sum((data_frame['class'] == 1)) - sum((data_frame['class'] == 1)[data_frame['scored.class'] == 0]) #all true values minus false negatives
 FN <- sum((data_frame['class'] == 1)) - sum((data_frame['class'] == 1)[data_frame['scored.class'] == 1]) #all false values minus true positives
-
-
 result <- TP/(TP + FN)
-
 return(100*round(result,3))
-
 }
-
-```
-
-```{r, sensitivity-test}
 
 sensitivity <- get_sensitivity(dataset_df)
 
@@ -219,7 +156,7 @@ Write a function that takes the data set as a dataframe, with actual and predict
 \textrm{Specificity} = \frac{TN}{TN + FP}
 \]
 
-```{r, specificity-function}
+```{r specificity-function}
 
 get_specificity <- function(data_frame) {
   
@@ -233,10 +170,6 @@ result <- TN/(TN + FP)
 return(100*round(result,3))
 
 }
-
-```
-
-```{r, specificity-test}
 
 specificity <- get_specificity(dataset_df)
 
@@ -253,18 +186,14 @@ Write a function that takes the data set as a dataframe, with actual and predict
 \textrm{Sensitivity}}{\textrm{Precision} + \textrm{Sensitivity}}
 \]
 
-```{r, f1-function}
-
+```{r f1-function}
 get_f1 <- function(data_frame) {
-  
-  
-
 TP <- sum((data_frame['class'] == 1)) - sum((data_frame['class'] == 1)[data_frame['scored.class'] == 0]) #all true values minus false negatives
 TN <- sum((data_frame['class'] == 0)) - sum((data_frame['class'] == 0)[data_frame['scored.class'] == 1]) #all false values minus false positives
 FP <- sum((data_frame['class'] == 0)) - sum((data_frame['class'] == 0)[data_frame['scored.class'] == 0]) #all true values minus true negatives
 FN <- sum((data_frame['class'] == 1)) - sum((data_frame['class'] == 1)[data_frame['scored.class'] == 1]) #all false values minus true positives
 
-sensitivity <- TN/(TN + FP)
+sensitivity <- TP/(TP + FN)
 precision <-  TP/(TP + FP)
 
 result <- (2*precision*sensitivity)/(precision + sensitivity)
@@ -273,13 +202,7 @@ return(round(result,3))
 
 }
 
-```
-
-
-```{r, f1-test}
-
 f1 <- get_f1(dataset_df)
-
 f1
 ```
 
@@ -345,51 +268,16 @@ get_roc <- function(data_frame) {
   
 }
 
-
-
-```
-
-
-```{r, ROC-test}
-
 get_roc(dataset_df)
-
-
 ```
-
-
-
 # 11. Metrics
 Use your **created R functions** and the provided classification output data set to produce all of the classification metrics discussed above.
 
-```{r accuracy}
-accuracy <- get_accuracy(dataset_df)
-accuracy
-```
-
-```{r classification-error-rate}
-error_rate <- get_err_rate(dataset_df)
-error_rate
-```
-
-```{r precision}
-precision <- get_precision(dataset_df)
-precision
-```
-
-```{r sensitivity1}
-sensitivity <- get_sensitivity(dataset_df)
-sensitivity
-```
-
-```{r specificity1}
-specificity <- get_specificity(dataset_df)
-specificity
-```
-
-```{r f1}
-f1 <- get_f1(dataset_df)
-f1
+```{r metrics}
+Metrics <- c('Accuracy','Classification Error Rate', 'Precision', 'Sensitivity','Specificity', 'F1')
+Value<- round(c(get_accuracy(dataset_df), get_err_rate(dataset_df), get_precision(dataset_df), get_sensitivity(dataset_df), get_specificity(dataset_df), get_f1(dataset_df)),4)
+dataset_df2 <- as.data.frame(cbind(Metrics, Value))
+knitr::kable(dataset_df2)
 ```
 
 # 12. Caret package
@@ -398,15 +286,12 @@ Investigate the **caret** package. In particular, consider the functions confusi
 The **confusionMatrix()** function puts the actual class in the columns and the predicted class in the rows, which is the opposite of the **table()** function.  The results from the functions here match our results.
 
 ```{r caret}
-library(caret)
-
 confusionMatrix(as.factor(dataset_df$scored.class),
                 as.factor(dataset_df$class),
                 positive = '1')
 ```
 
-                          
-```{r posPredValue}
+```{r pospred}
 # Precision
 posPredValue(as.factor(dataset_df$scored.class),
             as.factor(dataset_df$class),
@@ -414,7 +299,7 @@ posPredValue(as.factor(dataset_df$scored.class),
 ```
 
 
-```{r sensitivity}
+```{r sensitivity2}
 # Sensitivity
 sensitivity(as.factor(dataset_df$scored.class),
             as.factor(dataset_df$class),
@@ -428,7 +313,7 @@ specificity(as.factor(dataset_df$scored.class),
             as.factor(dataset_df$class),
             negative = '0')
 ```
-
+The results for the metrics are almost the same between the custom functions and the caret package.
 
 
 # 13. pROC package
@@ -436,15 +321,10 @@ Investigate the **pROC** package. Use it to generate an ROC curve for the data s
 
 This function has the specificity plotted on the x-axis seen from 1.0 to 0.0.  We plotted (1-specificity) on the x-axis.  This doesn't change the plotted points, only the x-axis label.  The AUC calculated here, 0.8503, which is very close to our value for AUC, 0.8539898.
 ```{r proc}
-library(pROC)
-
 roc <- roc(dataset_df, class, scored.probability)
 par(pty="s")
 plot(roc)
 auc(roc)
-
 ```
-
-
 
 
