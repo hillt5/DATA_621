@@ -3,15 +3,15 @@ title: "Data 621 - HW3"
 author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
 date: "4/18/2021"
 output:
-  pdf_document:
-    toc: TRUE
-    toc_depth: 2 
   html_document:
     highlight: pygments
     number_sections: yes
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    toc: TRUE
+    toc_depth: 2 
 ---
 # Introduction
 
@@ -26,6 +26,8 @@ for the evaluation data set using your binary logistic regression model.
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo=FALSE, error=FALSE, warning=FALSE, message=FALSE)
 ```
+
+
 ```{r loadData, include=FALSE}
 # Libraries
 library(dplyr)
@@ -40,8 +42,11 @@ library(MASS)
 library(caret)
 library(e1071)
 library(ROCR)
+library(DataExplorer)
+```
 
-        
+
+```{r}
 set.seed(2012)
 
 crime_training <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW3/crime-training-data_modified.csv')
@@ -56,20 +61,21 @@ dim(crime_training)
 ```
 Our dataset has 466 records.
 Explanation of features:
- znn: proportion of residential land zoned for large lots (over 25000 square feet) (predictor variable)
- indus: proportion of non-retail business acres per suburb (predictor variable)
- chas: a dummy var. for whether the suburb borders the Charles River (1) or not (0) (predictor variable)
- nox: nitrogen oxides concentration (parts per 10 million) (predictor variable)
- rm: average number of rooms per dwelling (predictor variable)
- age: proportion of owner-occupied units built prior to 1940 (predictor variable)
- dis: weighted mean of distances to five Boston employment centers (predictor variable)
- rad: index of accessibility to radial highways (predictor variable)
- tax: full-value property-tax rate per $10,000 (predictor variable)
- ptratio: pupil-teacher ratio by town (predictor variable)
- black: 1000(Bk - 0.63)2 where Bk is the proportion of blacks by town (predictor variable)
- lstat: lower status of the population (percent) (predictor variable)
- medv: median value of owner-occupied homes in $1000s (predictor variable)
- target: whether the crime rate is above the median crime rate (1) or not (0) (response variable)
+
+* znn: proportion of residential land zoned for large lots (over 25000 square feet) (predictor variable)
+* indus: proportion of non-retail business acres per suburb (predictor variable)
+* chas: a dummy var. for whether the suburb borders the Charles River (1) or not (0) (predictor variable)
+* nox: nitrogen oxides concentration (parts per 10 million) (predictor variable)
+* rm: average number of rooms per dwelling (predictor variable)
+* age: proportion of owner-occupied units built prior to 1940 (predictor variable)
+* dis: weighted mean of distances to five Boston employment centers (predictor variable)
+* rad: index of accessibility to radial highways (predictor variable)
+* tax: full-value property-tax rate per $10,000 (predictor variable)
+* ptratio: pupil-teacher ratio by town (predictor variable)
+* black: 1000(Bk - 0.63)2 where Bk is the proportion of blacks by town (predictor variable)
+* lstat: lower status of the population (percent) (predictor variable)
+* medv: median value of owner-occupied homes in $1000s (predictor variable)
+* target: whether the crime rate is above the median crime rate (1) or not (0) (response variable)
 
 This also appears to be a public dataset available through Carnegie Mellon University <http://lib.stat.cmu.edu/datasets/boston>.  The original white paper was a 1978 study published in the _Journal of Environmental Economics and Management_, which was interested in the marginal price consumers would pay for improved air quality. The communities studied were in the greater Boston area.
 
@@ -80,11 +86,29 @@ summary(crime_training)
 Looking at summary statistics, there are several proportions, like znn, indus, age, and lstat.  There is also a dummy variable, chas, for whether the community borders the Charles River. There are also no missing values.
 
 ```{r, histograms}
-hist(crime_training)
+plot_histogram(crime_training)
 skewness(crime_training,na.rm=FALSE)
 ```
 
+
+
 Looking at feature distributions, no variable appears particularly normal. There are several variables with single overrepresented values, like indus, ptratio, rad, tax, and zn. In the case of zn, this appears to be for communities with no industrial zoning.
+
+
+
+
+```{r boxplot}
+ggplot(stack(crime_training), aes(x = ind, y = values)) +
+  geom_boxplot(color = "darkgreen", fill = "darkgreen", alpha = 0.3, notch = TRUE,
+               notchwidth = 0.5, outlier.colour = "red", outlier.fill = "red",
+               outlier.size = 3) + 
+  labs(title = "Boxplot of feature variables") + 
+  scale_y_log10()
+```
+
+The above notched boxplots of feature variables confirms the skewness shown in corresponsding histograms. The notch displays the confidence interval around the median.
+
+
 
 ```{r, corrplot}
 corrplot(cor(crime_training))
