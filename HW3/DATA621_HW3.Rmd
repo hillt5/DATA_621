@@ -8,19 +8,25 @@ output:
     toc_depth: 2 
   html_document:
     highlight: pygments
-    number_sections: no
+    number_sections: yes
     theme: flatly
     toc: yes
     toc_float: yes
 ---
+# Introduction
+
+In this homework assignment, you will explore, analyze and model a data set containing information on
+crime for various neighborhoods of a major city. Each record has a response variable indicating whether
+or not the crime rate is above the median crime rate (1) or not (0).
+Your objective is to build a binary logistic regression model on the training data set to predict whether
+the neighborhood will be at risk for high crime levels. You will provide classifications and probabilities
+for the evaluation data set using your binary logistic regression model.
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo=FALSE, error=FALSE, warning=FALSE, message=FALSE)
 ```
-
 ```{r loadData, include=FALSE}
-
-
 # Libraries
 library(dplyr)
 library(GGally)
@@ -40,22 +46,17 @@ set.seed(2012)
 
 crime_training <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW3/crime-training-data_modified.csv')
 crime_eval <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW3/crime-evaluation-data_modified.csv')
-
-
 ```
 
+# Data Exploration
 
 ```{r, crime-df}
-
 head(crime_training)
 dim(crime_training)
-
 ```
-
+Our dataset has 466 records.
 Explanation of features:
-
-
- znn: proportion of residential land zoned for large lots (over 25000 square feet) (predictor variable)
+ znn: proportion of residential land zoned for large lots (over 25000 square feet) (predictor variable)
  indus: proportion of non-retail business acres per suburb (predictor variable)
  chas: a dummy var. for whether the suburb borders the Charles River (1) or not (0) (predictor variable)
  nox: nitrogen oxides concentration (parts per 10 million) (predictor variable)
@@ -73,34 +74,26 @@ Explanation of features:
 This also appears to be a public dataset available through Carnegie Mellon University <http://lib.stat.cmu.edu/datasets/boston>.  The original white paper was a 1978 study published in the _Journal of Environmental Economics and Management_, which was interested in the marginal price consumers would pay for improved air quality. The communities studied were in the greater Boston area.
 
 ```{r, summary}
-
 summary(crime_training)
-
 ```
 
 Looking at summary statistics, there are several proportions, like znn, indus, age, and lstat.  There is also a dummy variable, chas, for whether the community borders the Charles River. There are also no missing values.
 
 ```{r, histograms}
-
-plot_histogram(crime_training)
-
+hist(crime_training)
+skewness(crime_training,na.rm=FALSE)
 ```
-
 
 Looking at feature distributions, no variable appears particularly normal. There are several variables with single overrepresented values, like indus, ptratio, rad, tax, and zn. In the case of zn, this appears to be for communities with no industrial zoning.
 
 ```{r, corrplot}
-
 corrplot(cor(crime_training))
-
 ```
 
 Our target variable, crime rate > median, has several strong correlations with predictors. These include NO concentrations, age of dwellings, accessibility to highways, and property tax rate. It is negatively correlated with distance to metro employment centers.  There are also some variables that are strongly correlated with other predictors, including indus, nox, age, and dis. In particular,access to highways and property tax rate appear strongly correlated.
 
 
 ```{r, nox-vs-rad}
-
-
 ggplot(crime_training, aes(rad, nox)) +
   geom_point() +
   geom_smooth(se = FALSE, method = 'lm' )
@@ -108,8 +101,6 @@ ggplot(crime_training, aes(rad, nox)) +
 
 
 ```{r, tax-vs-rad}
-
-
 ggplot(crime_training, aes(rad, tax)) +
   geom_point() +
   geom_smooth(se = FALSE, method = 'lm' )
@@ -127,4 +118,37 @@ summary(crime_glm)
 
 ```
 
-Without any transformations, it appears NO concentrations are a strong predictor of crime. Nearby highways are also correlated
+Without any transformations, it appears NO concentrations are a strong predictor of crime. Nearby highways are also correlated.
+
+# Data Preparation
+
+## Zero Inflation
+
+From a glance at the histogram for predictor 'zn', it seems like the number 0 occurs more frequently than any other values. 
+
+```{r,zn-verification}
+count(crime_training,zn)
+```
+Upon further investigation, it appears that out of the 466 observations, 339 had residential land zoned for large lots. There are more zeros than expected for this variable and this can cause overdispersion. Therefore, we will transform this variable to a dichotomous variable indicating whether or not residential land was zoned for large lots.
+
+```{r,zn-conversion}
+crime_training$zn <- ifelse(crime_training$zn == 0, 0, 1) # 0 indicates that the neighborhood does not have residential land zoned for large lots and 1 indicates that it does
+count(crime_training,zn)
+```
+## Log Transformation
+
+The predictors rad and dis are also highly skewed (ignoring chas since this is a categorical variable). Thus we will log transform these variables
+
+```{r,log-transformation}
+crime_training$rad <- log(crime_training$rad+1)
+crime_training$dis <- log(crime_training$dis+1)
+skewness(crime_training,na.rm=FALSE)
+```
+Skewness for the log transformed variables are now below 1.
+
+## Converting Categorical Variables to Factors
+
+```{r,factors}
+crime_training$chas = as.factor(crime_training$chas)
+crime_training$target = as.factor(crime_training$target)
+```
