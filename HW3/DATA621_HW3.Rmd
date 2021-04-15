@@ -303,7 +303,9 @@ get_roc <- function(data_frame, model, split = 0.8) {  ### input is dataframe fo
 ```
 
 
+### Model Performance
 
+To measure model performance, a confusion matrix and ROC curve will be used. The confusion matrix will offer metrics about the predictive value of each logistical model. The ROC curve offers a graphical counterpart to these metrics. For both functions, the function performs a preliminary 5-way cross-validation as well.
 
 ```{r, get-perfs}
 
@@ -327,17 +329,6 @@ summary(crime_glm2)
 get_cv_performance(crime_training, crime_glm2)
 get_roc(crime_training, crime_glm2)
 
-
 ```
 
-
-
-### Outliers
-
-```{r, glm-2-outlier}
-
-
-plot(crime_glm2)
-
-```
 
