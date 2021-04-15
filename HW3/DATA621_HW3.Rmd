@@ -172,7 +172,7 @@ table((crime_training$rad[crime_training$target ==1]))
 
 
 ```
-Finally, here's a table looking at each index value for the rad variable. Of the 229 high crime neighborhoods, they are clearly not distributed evenly between the different index levels. It also doesn't appear that there's an increasing or descreasing pattern.
+Finally, here's a table looking at each index value for the rad variable. Of the 229 high crime neighborhoods, they are clearly not distributed evenly between the different index levels. For index values of 1 and 2, there are no high crime neighborhoods. It also doesn't appear that there's an increasing or descreasing pattern.
 
 
 
@@ -208,11 +208,34 @@ summary(crime_glm)
 
 Without any transformations, it appears NO concentrations are a strong predictor of crime. Nearby highways are also correlated.
 
+### Outliers
+
+
+```{r, outlier-plot}
+
+plot(crime_glm)
+
+```
+
+There appears to be a single outlier in our initial model, observation #338.  
+
+
+```{r, outlier}
+
+crime_training[338,]
+
+
+```
+
+Looking back to our look at the rad variable, this appears to be the single high crime area with a rad value of 3.
+
+
 # Data Preparation
 
 ## Zero Inflation
 
 From a glance at the histogram for predictor 'zn', it seems like the number 0 occurs more frequently than any other values. 
+
 
 ```{r,zn-verification}
 count(crime_training,zn)
