@@ -113,21 +113,6 @@ corrplot(cor(crime_training))
 Our target variable, crime rate > median, has several strong correlations with predictors. These include NO concentrations, age of dwellings, accessibility to highways, and property tax rate. It is negatively correlated with distance to metro employment centers.  There are also some variables that are strongly correlated with other predictors, including indus, nox, age, and dis. In particular,access to highways and property tax rate appear strongly correlated.
 
 
-```{r, nox-vs-rad}
-ggplot(crime_training, aes(rad, nox)) +
-  geom_point() +
-  geom_smooth(se = FALSE, method = 'lm' )
-```
-
-
-```{r, tax-vs-rad}
-ggplot(crime_training, aes(rad, tax)) +
-  geom_point() +
-  geom_smooth(se = FALSE, method = 'lm' )
-```
-
-On second look, there appears to be two outlying points from the major cluster of datapoints.
-
 
 
 ```{r, first-model}
