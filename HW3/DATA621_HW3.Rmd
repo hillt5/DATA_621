@@ -87,9 +87,92 @@ skewness(crime_training,na.rm=FALSE)
 ```
 
 
+### Unique values and Modes
 
 Looking at feature distributions, no variable appears particularly normal. There are several variables with single overrepresented values, like indus, ptratio, rad, tax, and zn. In the case of zn, this appears to be for communities with no industrial zoning.
 
+The variables indus, ptratio, rad, tax, and zn all have pronounced modes. Lets take a closer look at the proportion of distinct values to see how to treat these variables
+
+
+```{r, unique-values}
+
+print('Indus unique values: ')
+length(unique(crime_training$indus))
+
+
+print('Ptratio unique values: ')
+length(unique(crime_training$ptratio))
+
+
+print('Rad unique values: ')
+length(unique(crime_training$rad))
+
+print('Tax unique values: ')
+length(unique(crime_training$tax))
+
+
+print('Zn unique values: ')
+length(unique(crime_training$zn))
+
+
+```
+
+Rad in particular appears to only have 9 unique values. The dscription of this variable mentions it is an index, so it may be preferable to consider it a categorical variable in the regression.
+
+
+```{r, modes}
+
+print('Indus most common values: ')
+sort(table(crime_training$indus), decreasing = TRUE)[1:10]
+
+print('Ptratio most common values: ')
+sort(table(crime_training$ptratio), decreasing = TRUE)[1:10]
+
+
+print('Rad most common values: ')
+sort(table(crime_training$rad), decreasing = TRUE)[1:10]
+
+print('Tax most common values: ')
+sort(table(crime_training$tax), decreasing = TRUE)[1:10]
+
+
+print('Zn most common values: ')
+sort(table(crime_training$zn), decreasing = TRUE)[1:10]
+
+
+```
+
+For 3 of the 5 variables, the mode is represented 121 times. Next, lets see if these variables coincide
+
+
+```{r, mode-overlap}
+
+crime_training %>% filter(indus == 18.1) %>% filter(ptratio == 20.2) %>% filter(tax == 666) %>% nrow()
+
+
+
+print('Proportion of cluster above median crime rate: ')
+
+crime_training %>% filter(indus == 18.1) %>% filter(ptratio == 20.2) %>% filter(tax == 666) %>% summarize(mean(target))
+
+100*round(121/nrow(crime_training),2)
+100*round(121/nrow(crime_training[crime_training$target == 1,]),2)
+```
+
+Counting the affected rows confirms that these modes have 100% overlap. This likely represents a cluster of values. And crucially, all 121 of these neighborhoods have above-median crime rates. This cluster represents 26% of all observations and over half of the high crime neighborhoods.
+
+
+
+```{r, rad-crime-level}
+
+
+
+table((crime_training$rad[crime_training$target ==1]))
+
+
+
+```
+Finally, here's a table looking at each index value for the rad variable. Of the 229 high crime neighborhoods, they are clearly not distributed evenly between the different index levels. It also doesn't appear that there's an increasing or descreasing pattern.
 
 
 
