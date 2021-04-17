@@ -15,8 +15,7 @@ output:
 ---
 # Introduction
 
-In this homework assignment, you will explore, analyze and model a data set containing information on crime for various neighborhoods of a major city. Each record has a response variable indicating whether
-or not the crime rate is above the median crime rate (1) or not (0). Your objective is to build a binary logistic regression model on the training data set to predict whether the neighborhood will be at risk for high crime levels. You will provide classifications and probabilities for the evaluation data set using your binary logistic regression model.
+In this homework assignment, you will explore, analyze and model a data set containing information on crime for various neighborhoods of a major city. Each record has a response variable indicating whether or not the crime rate is above the median crime rate (1) or not (0). Your objective is to build a binary logistic regression model on the training data set to predict whether the neighborhood will be at risk for high crime levels. You will provide classifications and probabilities for the evaluation data set using your binary logistic regression model.
 
 
 ```{r setup, include=FALSE}
@@ -40,6 +39,7 @@ library(e1071)
 library(ROCR)
 library(DataExplorer)
 library(pROC)
+library(kableExtra)
 ```
 
 
@@ -117,7 +117,7 @@ length(unique(crime_training$zn))
 
 ```
 
-Rad in particular appears to only have 9 unique values. The dscription of this variable mentions it is an index, so it may be preferable to consider it a categorical variable in the regression.
+Rad in particular appears to only have 9 unique values. The description of this variable mentions it is an index, so it may be preferable to consider it a categorical variable in the regression.
 
 
 ```{r, modes}
@@ -195,7 +195,7 @@ corrplot(cor(crime_training))
 
 Our target variable, crime rate > median, has several strong correlations with predictors. These include NO concentrations, age of dwellings, accessibility to highways, and property tax rate. It is negatively correlated with distance to metro employment centers.  There are also some variables that are strongly correlated with other predictors, including indus, nox, age, and dis. In particular,access to highways and property tax rate appear strongly correlated.
 
-
+# Build Models
 
 
 ```{r, first-model}
@@ -230,8 +230,6 @@ crime_training[338,]
 Looking back to our look at the rad variable, this appears to be the single high crime area with a rad value of 3.
 
 
-# Data Preparation
-
 ## Zero Inflation
 
 From a glance at the histogram for predictor 'zn', it seems like the number 0 occurs more frequently than any other values. 
@@ -251,23 +249,24 @@ count(crime_training,zn)
 The predictors rad and dis are also highly skewed (ignoring chas since this is a categorical variable). Thus we will log transform these variables
 
 ```{r,log-transformation}
-crime_training$rad <- log(crime_training$rad+1)
-crime_training$dis <- log(crime_training$dis+1)
-skewness(crime_training,na.rm=FALSE)
+crime_training_transf <- crime_training
+crime_training_transf$rad <- log(crime_training_transf$rad+1)
+crime_training_transf$dis <- log(crime_training_transf$dis+1)
+skewness(crime_training_transf,na.rm=FALSE)
 ```
 Skewness for the log transformed variables are now below 1.
 
 ## Converting Categorical Variables to Factors
 
 ```{r,factors}
-crime_training$chas = as.factor(crime_training$chas)
-crime_training$target = as.factor(crime_training$target)
+crime_training_transf$chas = as.factor(crime_training_transf$chas)
+crime_training_transf$target = as.factor(crime_training_transf$target)
 ```
 
 
 ```{r, transformed-model}
 
-lm_transform <- glm(crime_training, family = 'binomial', formula = target ~.)
+lm_transform <- glm(crime_training_transf, family = 'binomial', formula = target ~.)
 
 summary(lm_transform)
 
@@ -326,17 +325,33 @@ get_roc <- function(data_frame, model, split = 0.8) {  ### input is dataframe fo
 ```
 
 
-### Model Performance
+# Model Selection Based on Performance
 
 To measure model performance, a confusion matrix and ROC curve will be used. The confusion matrix will offer metrics about the predictive value of each logistical model. The ROC curve offers a graphical counterpart to these metrics. For both functions, the function performs a preliminary 5-way cross-validation as well.
 
+### Model 1  
+This model was created using all parameters.  
 ```{r, get-perfs}
 
-get_cv_performance(crime_training, crime_glm)
-get_roc(crime_training, crime_glm)
-
+model1_cv <- get_cv_performance(crime_training, crime_glm)
+model1_roc <- get_roc(crime_training, crime_glm)
+model1_cv
+model1_roc
 
 ```
+
+### Model 2  
+This model uses all parameters with log transformations on **rad** and **dis**  
+```{r, get-perfs-lm-transformed}
+
+model2_cv <- get_cv_performance(crime_training_transf, lm_transform)
+model2_roc <- get_roc(crime_training_transf, lm_transform)
+model2_cv
+model2_roc
+```
+
+### Model 3   
+This model removed the parameters **zn**, **chas**, **age**, **dis** and **ptratio**.  An additional variable was created using a combination of other variables **rm(tax + med)**.  
 
 ```{r, glm-2}
 crime_glm2 <- glm(crime_training, formula = target~rm*(tax + medv) + nox + indus + +rm  + medv + tax + as.factor(rad), family = 'binomial')
@@ -344,14 +359,74 @@ crime_glm2 <- glm(crime_training, formula = target~rm*(tax + medv) + nox + indus
 summary(crime_glm2)
 
 ```
-
-
 ```{r, glm2-eval}
 
-
-get_cv_performance(crime_training, crime_glm2)
-get_roc(crime_training, crime_glm2)
-
+model3_cv <- get_cv_performance(crime_training, crime_glm2)
+model3_roc <- get_roc(crime_training, crime_glm2)
+model3_cv
+model3_roc
 ```
+
+### Model 4
+In this model we transformed the variables **rad** and **dis** using log transformations and used backwards elimination to remove variables that are not predictive one at a time.  As we removed variables the AIC value decreased which indicates a better goodness of fit.
+
+```{r model-4}
+crime_training_sw_transf <- crime_training
+crime_training_sw_transf$rad <- log(crime_training_sw_transf$rad+1)
+crime_training_sw_transf$dis <- log(crime_training_sw_transf$dis+1)
+
+crime_training_sw_transf$chas   = as.factor(crime_training_sw_transf$chas)
+crime_training_sw_transf$target = as.factor(crime_training_sw_transf$target)
+
+
+crime_glm4 <- glm(crime_training_sw_transf, formula = target ~ ., family = 'binomial')
+#summary(crime_glm4)
+crime_glm4 <- update(crime_glm4,target~. - indus) #remove indus
+#summary(crime_glm4)
+crime_glm4 <- update(crime_glm4,target~. - lstat) #remove lstat
+#summary(crime_glm4)
+crime_glm4 <- update(crime_glm4,target~. - chas) #remove chas
+#summary(crime_glm4)
+crime_glm4 <- update(crime_glm4,target~. - rm) #remove rm
+summary(crime_glm4)
+```
+
+```{r model-4-cv-roc}
+model4_cv <- get_cv_performance(crime_training_sw_transf, crime_glm4)
+model4_roc <- get_roc(crime_training_sw_transf, crime_glm4)
+model4_cv
+model4_roc
+```
+  
+### Conclusion  
+```{r conclusion, echo = FALSE}
+Model_1 <- c("All variables",model1_roc$auc,model1_cv$byClass["Balanced Accuracy"],1-model1_cv$byClass["Balanced Accuracy"],model1_cv$byClass["Precision"],model1_cv$byClass["Sensitivity"],model1_cv$byClass["Specificity"],model1_cv$byClass["F1"])
+
+Model_2 <- c("Some log transformations",model2_roc$auc,model2_cv$byClass["Balanced Accuracy"],1-model2_cv$byClass["Balanced Accuracy"],model2_cv$byClass["Precision"],model2_cv$byClass["Sensitivity"],model2_cv$byClass["Specificity"],model2_cv$byClass["F1"])
+
+Model_3 <- c("Fewer variables, new created variable",model3_roc$auc,model3_cv$byClass["Balanced Accuracy"],1-model3_cv$byClass["Balanced Accuracy"],model3_cv$byClass["Precision"],model3_cv$byClass["Sensitivity"],model3_cv$byClass["Specificity"],model3_cv$byClass["F1"])
+
+Model_4 <- c("Backwards elmination, log transformations",model4_roc$auc,model4_cv$byClass["Balanced Accuracy"],1-model4_cv$byClass["Balanced Accuracy"],model4_cv$byClass["Precision"],model4_cv$byClass["Sensitivity"],model4_cv$byClass["Specificity"],model4_cv$byClass["F1"])
+
+results <- cbind(Model_1,Model_2,Model_3,Model_4)
+
+colnames(results) <- c('Model1', 'Model2', 'Model3','Model4')
+rownames(results) <- c('Description','AUC','accuracy','classification error rate','precision','sensitivity','specificty','F1 Score')
+
+results %>%
+  kable() %>%
+  kable_styling()
+```
+
+While all 4 models are great at predicting on our test data, Model 3 performs the best.  The AUC value for Model 3 is the highest. 
+The sensitivity, specificy, accuracy and error rate are the highest in Model 3 as well.    
+
+\newline
+
+Our final model shows the biggest predictors of whether a town has a crime rate above the median is the avg number of rooms in a house, the nitrogen oxide concentrations, and index of accessibility to radial highways. Here is the final model:  
+
+\newline
+
+$$\begin{eqnarray} target = 50.35025 - 18.00372rm - 0.25978tax -0.89499medv + 74.28452nox -0.15323indus - 0.93553rad2 + 21.68964rad3 + 24.10738rad4 + 21.0538rad5 +19.04056rad6 +27.13905rad7 + 27.10154rad8 + 64.83889rad24 + 0.04132rm:tax + 0.15300rm:medv \end{eqnarray}$$
 
 
