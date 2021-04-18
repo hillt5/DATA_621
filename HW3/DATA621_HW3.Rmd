@@ -434,7 +434,6 @@ $$\begin{eqnarray} target = 50.35025 - 18.00372rm - 0.25978tax -0.89499medv + 74
 We will use our final model on the evaluation dataset to predict whether or not, the crime rate is above the median crime rate in a neighborhood. The assigned threshold for the median is 0.5.
 
 ```{r,eval}
-crime_eval$chas <- as.factor(crime_eval$chas)
 prediction <- predict(crime_glm2, newdata = crime_eval)
 prediction[prediction >= 0.5] <- 1
 prediction[prediction < 0.5] <- 0
