@@ -195,18 +195,6 @@ corrplot(cor(crime_training))
 
 Our target variable, crime rate > median, has several strong correlations with predictors. These include NO concentrations, age of dwellings, accessibility to highways, and property tax rate. It is negatively correlated with distance to metro employment centers.  There are also some variables that are strongly correlated with other predictors, including indus, nox, age, and dis. In particular,access to highways and property tax rate appear strongly correlated.
 
-# Build Models
-
-
-```{r, first-model}
-
-crime_glm <- glm(crime_training, family = 'binomial', formula = target ~.)
-
-summary(crime_glm)
-
-```
-
-Without any transformations, it appears NO concentrations are a strong predictor of crime. Nearby highways are also correlated.
 
 ### Outliers
 
@@ -229,6 +217,16 @@ crime_training[338,]
 
 Looking back to our look at the rad variable, this appears to be the single high crime area with a rad value of 3.
 
+# Data Preparation
+
+```{r, first-model}
+
+crime_glm <- glm(crime_training, family = 'binomial', formula = target ~.)
+
+summary(crime_glm)
+
+```
+Without any transformations, it appears NO concentrations are a strong predictor of crime. Nearby highways are also correlated.
 
 ## Zero Inflation
 
@@ -263,6 +261,7 @@ crime_training_transf$chas = as.factor(crime_training_transf$chas)
 crime_training_transf$target = as.factor(crime_training_transf$target)
 ```
 
+# Build Models
 
 ```{r, transformed-model}
 
