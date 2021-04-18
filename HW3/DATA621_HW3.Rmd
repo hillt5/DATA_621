@@ -235,7 +235,7 @@ count(crime_training,zn)
 
 ## Log Transformation
 
-The predictors rad and dis are also highly skewed (ignoring chas since this is a categorical variable). Thus we will log transform these variables
+The predictors rad and dis are also highly skewed (ignoring chas since this is a categorical variable). Thus we will log transform these variables.
 
 ```{r, log-transformation}
 crime_training_transf <- crime_training
@@ -249,6 +249,9 @@ Skewness for the log transformed variables are now below 1.
 ## Converting Categorical Variables to Factors
 
 
+Factor variables are categorical variables that could be either numeric or string. The important advantage of this conversion is that they can be used in statistical modeling where they will be implemented correctly, i.e., they will  be assigned the correct number of degrees of freedom. Also, storing string variables as factor variables is a more efficient use of memory.
+
+
 ```{r, factors}
 crime_training_transf$chas = as.factor(crime_training_transf$chas)
 crime_training_transf$target = as.factor(crime_training_transf$target)
@@ -258,6 +261,9 @@ crime_training_transf$target = as.factor(crime_training_transf$target)
 # Build Models
 
 ## Model 1
+
+We will first start with generalized linear model (glm). glm is used to fit generalized linear models, specified by giving a symbolic description of the linear predictor and a description of the error distribution. `family` used here is binomial.
+
 
 ```{r, first-model}
 # Model 1
@@ -274,6 +280,9 @@ plot(crime_glm)
 
 ## Model 2
 
+The predictors rad and dis are also highly skewed (ignoring chas since this is a categorical variable). Thus we will log transform these variables and in model 2 we will use glm model with transformed data. This model uses all parameters with log transformations on **rad** and **dis**.
+
+
 ```{r, transformed-model}
 # transformed model
 lm_transform <- glm(crime_training_transf, family = 'binomial', formula = target ~.)
@@ -281,6 +290,10 @@ summary(lm_transform)
 
 ```
 
+```{r, plot-model2}
+# plot model 2
+plot(lm_transform)
+```
 
 ## Model 3
 
@@ -290,6 +303,12 @@ This model removed the parameters **zn**, **chas**, **age**, **dis** and **ptrat
 crime_glm2 <- glm(crime_training, formula = target~rm*(tax + medv) + nox + indus + +rm  + medv + tax + as.factor(rad), family = 'binomial')
 
 summary(crime_glm2)
+```
+
+
+```{r, plot-model3}
+# plot model 3
+plot(crime_glm2)
 ```
 
 
@@ -318,6 +337,11 @@ crime_glm4 <- update(crime_glm4,target~. - rm) #remove rm
 summary(crime_glm4)
 ```
 
+
+```{r, plot-model4}
+# plot model 4
+plot(crime_glm4)
+```
 
 
 # Select Models
@@ -401,6 +425,8 @@ model2_roc
 
 ## Model 3   
 
+This model removed the parameters **zn**, **chas**, **age**, **dis** and **ptratio**.  An additional variable was created using a combination of other variables **rm(tax + med)**.  
+
 ```{r, glm2-eval}
 
 model3_cv <- get_cv_performance(crime_training, crime_glm2)
@@ -410,6 +436,8 @@ model3_roc
 ```
 
 ## Model 4
+
+In this model we transformed the variables **rad** and **dis** using log transformations and used backwards elimination to remove variables that are not predictive one at a time.  As we removed variables the AIC value decreased which indicates a better goodness of fit.
 
 
 ```{r, model-4-cv-roc}
@@ -556,11 +584,25 @@ knitr::opts_chunk$set(echo=TRUE, eval=FALSE)
 ```
 
 
+```{r, plot-model2}
+```
+
+
 ```{r, glm-2}
 ```
 
+
+```{r, plot-model3}
+```
+
+
 ```{r, model-4}
 ```
+
+
+```{r, plot-model4}
+```
+
 
 
 ```{r, performance-function}
