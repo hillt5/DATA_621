@@ -85,7 +85,7 @@ Looking at summary statistics, there are several proportions, like znn, indus, a
 plot_histogram(crime_training)
 skewness(crime_training,na.rm=FALSE)
 ```
-
+Several predictors seem highly skewed and thereby, good candidates for transformation.
 
 ### Unique values and Modes
 
@@ -419,7 +419,7 @@ results %>%
 ```
 
 While all 4 models are great at predicting on our test data, Model 3 performs the best.  The AUC value for Model 3 is the highest. 
-The sensitivity, specificy, accuracy and error rate are the highest in Model 3 as well.    
+The sensitivity, specificity, accuracy and error rate are the highest in Model 3 as well.    
 
 \newline
 
@@ -429,4 +429,15 @@ Our final model shows the biggest predictors of whether a town has a crime rate 
 
 $$\begin{eqnarray} target = 50.35025 - 18.00372rm - 0.25978tax -0.89499medv + 74.28452nox -0.15323indus - 0.93553rad2 + 21.68964rad3 + 24.10738rad4 + 21.0538rad5 +19.04056rad6 +27.13905rad7 + 27.10154rad8 + 64.83889rad24 + 0.04132rm:tax + 0.15300rm:medv \end{eqnarray}$$
 
+## Predicting on the Evaluation Dataset
 
+We will use our final model on the evaluation dataset to predict whether or not, the crime rate is above the median crime rate in a neighborhood. The assigned threshold for the median is 0.5.
+
+```{r,eval}
+crime_eval$chas <- as.factor(crime_eval$chas)
+prediction <- predict(crime_glm2, newdata = crime_eval)
+prediction[prediction >= 0.5] <- 1
+prediction[prediction < 0.5] <- 0
+prediction = as.factor(prediction)
+prediction
+```
