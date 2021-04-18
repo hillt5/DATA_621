@@ -3,15 +3,15 @@ title: "Data 621 - HW3"
 author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
 date: "4/18/2021"
 output:
+  pdf_document:
+    toc: TRUE
+    toc_depth: 2 
   html_document:
     highlight: pygments
     #number_sections: yes
     theme: flatly
     toc: yes
     toc_float: yes
-  pdf_document:
-    toc: TRUE
-    toc_depth: 2 
 ---
 # Introduction
 
@@ -470,15 +470,16 @@ results %>%
 
 
 While all 4 models are great at predicting on our test data, Model 3 performs the best.  The AUC value for Model 3 is the highest. 
-The sensitivity, specificity, accuracy and error rate are the highest in Model 3 as well.    
-
-\newline
+The sensitivity, specificity, accuracy and error rate are the highest in Model 3 as well.
 
 Our final model shows the biggest predictors of whether a town has a crime rate above the median is the avg number of rooms in a house, the nitrogen oxide concentrations, and index of accessibility to radial highways. Here is the final model:  
 
-\newline
 
-$$\begin{eqnarray} target = 50.35025 - 18.00372rm - 0.25978tax -0.89499medv + 74.28452nox -0.15323indus - 0.93553rad2 + 21.68964rad3 + 24.10738rad4 + 21.0538rad5 +19.04056rad6 +27.13905rad7 + 27.10154rad8 + 64.83889rad24 + 0.04132rm:tax + 0.15300rm:medv \end{eqnarray}$$
+
+\begin{eqnarray} 
+target = 50.35025 - 18.00372rm - 0.25978tax -0.89499medv + 74.28452nox -0.15323indus - 0.93553rad2 + 21.68964rad3 + 24.10738rad4 + 21.0538rad5 +19.04056rad6 +27.13905rad7 + 27.10154rad8 + 64.83889rad24 + 0.04132rm:tax + 0.15300rm:medv 
+\end{eqnarray}
+
 
 ## Predicting on the Evaluation Dataset
 
