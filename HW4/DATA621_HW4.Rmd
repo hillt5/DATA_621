@@ -18,7 +18,7 @@ output:
 knitr::opts_chunk$set(echo=FALSE, error=FALSE, warning=FALSE, message=FALSE)
 ```
 
-```{r loadData, include=FALSE}
+```{r libraries, include=FALSE}
 
 
 # Libraries
@@ -32,11 +32,85 @@ library(tidyr)
 library(corrplot)
 library(MASS)
 library(caret)
-library(Hmisc)
 library(e1071)
-library(Amelia)
+library(stringr)
+library(tidyr)
         
 set.seed(2012)
 
 
 ```
+
+
+```{r data}
+insurance <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW4/insurance_training_data.csv', stringsAsFactors =  FALSE)
+```
+
+
+```{r, before-fix}
+
+head(insurance)
+summary(insurance)
+
+insurance_fix <- insurance
+
+```
+
+There are several recurring isues with some columns: all columns containing money amounts have incomptaible punctuation and characters. Also, categorical variables neeed to be changed to factors and their 
+
+
+```{r, numeric-vars}
+
+insurance_fix$HOME_VAL <- substr(insurance_fix$HOME_VAL, 2, nchar(insurance_fix$HOME_VAL))
+insurance_fix$HOME_VAL <- as.numeric(str_remove_all(insurance_fix$HOME_VAL, "[[:punct:]]"))
+
+insurance_fix$BLUEBOOK<- substr(insurance_fix$BLUEBOOK , 2, nchar(insurance_fix$BLUEBOOK ))
+insurance_fix$BLUEBOOK<- as.numeric(str_remove_all(insurance_fix$BLUEBOOK,"[[:punct:]]"))
+
+insurance_fix$INCOME  <- substr(insurance_fix$INCOME, 2, nchar(insurance_fix$INCOME))
+insurance_fix$INCOME <- as.numeric(str_remove_all(insurance_fix$INCOME, "[[:punct:]]"))
+
+insurance_fix$OLDCLAIM <- substr(insurance_fix$OLDCLAIM, 2, nchar(insurance_fix$OLDCLAIM))
+insurance_fix$OLDCLAIM <- as.numeric(str_remove_all(insurance_fix$OLDCLAIM, "[[:punct:]]"))
+
+```
+
+
+```{r, categorical-vars}
+
+insurance_fix$MSTATUS = as.factor(str_remove(insurance_fix$MSTATUS, 'z_'))
+insurance_fix$PARENT1 = as.factor(str_remove(insurance_fix$PARENT1, 'z_'))
+insurance_fix$EDUCATION = str_remove(insurance_fix$EDUCATION, '<')
+insurance_fix$SEX= as.factor(str_remove(insurance_fix$SEX, 'z_'))
+insurance_fix$EDUCATION = as.factor(str_remove(insurance_fix$EDUCATION, 'z_'))
+insurance_fix$JOB = as.factor(str_remove(insurance_fix$JOB, 'z_'))
+insurance_fix$CAR_USE = as.factor(str_remove(insurance_fix$CAR_USE, 'z_'))
+insurance_fix$CAR_TYPE = as.factor(str_remove(insurance_fix$CAR_TYPE, 'z_'))
+insurance_fix$URBANICITY = as.factor(str_remove(insurance_fix$URBANICITY, 'z_'))
+insurance_fix$REVOKED = as.factor(str_remove(insurance_fix$REVOKED, 'z_'))
+insurance_fix$RED_CAR = as.factor(str_remove(insurance_fix$RED_CAR, 'z_'))
+```
+
+
+```{r, after-fix}
+
+summary(insurance_fix)
+
+```
+
+
+
+```{r, levels}
+
+for (i in 4:ncol(insurance_fix)) {
+  if (class((insurance_fix[,i])) == 'factor') {
+      print(levels(insurance_fix[,i]))
+  }
+
+}
+
+
+```
+
+
+The only remaining issue are blank values for some entries in the 'JOB' column.
