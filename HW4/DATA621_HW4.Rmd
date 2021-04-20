@@ -28,6 +28,7 @@ library(stringr)
 library(tidyr)
 library(DataExplorer)        
 library(dplyr)
+library(visdat)
 library(pROC)
 
 library(GGally)
@@ -102,6 +103,13 @@ summary(insurance_fix)
 
 ```
 
+Car age appears to have some values less than 1, including a negative values. These will be chnaged to the mode of 1.
+```{r, car-age}
+
+insurance_fix$CAR_AGE[insurance_fix$CAR_AGE <1] <- 1
+
+
+```
 
 
 ```{r, levels}
@@ -122,6 +130,8 @@ The only remaining issue are blank values for some entries in the 'JOB' column.
 ```{r, missing-values}
 
 colSums(is.na(insurance_fix))
+
+vis_dat(insurance_fix %>% dplyr:: select(YOJ, INCOME, HOME_VAL, CAR_AGE))
 
 
 ```
