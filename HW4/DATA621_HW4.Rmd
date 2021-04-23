@@ -30,16 +30,18 @@ library(DataExplorer)
 library(dplyr)
 library(visdat)
 library(pROC)
+library(mice)
+library(corrplot)
+library(MASS)
+library(caret)
+library(e1071)
+
 
 library(GGally)
 library(ggplot2)
 library(readr)
 library(reshape2)
 library(purrr)
-library(corrplot)
-library(MASS)
-library(caret)
-library(e1071)
 
 set.seed(2012)
 
@@ -260,3 +262,33 @@ get_roc(insurance_fix, insurance_logistic_model)
 
 
 ```
+
+
+
+```{r, imputed-model}
+
+insurance_impute <- mice(insurance_fix, method = 'cart', m = 1)
+
+imputed_lm <- glm.mids(data = insurance_impute, formula = TARGET_FLAG ~.-TARGET_AMT, family = 'binomial')
+
+
+imputed_lm
+
+```
+
+
+
+```{r, imputed-model-performance}
+
+get_cv_performance(insurance_fix, imputed_lm$analyses[[1]])
+get_roc(insurance_fix, imputed_lm$analyses[[1]])
+
+
+```
+
+
+
+
+
+
+
