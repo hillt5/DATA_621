@@ -53,7 +53,22 @@ set.seed(2012)
 insurance <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW4/insurance_training_data.csv', stringsAsFactors =  FALSE)
 ```
 
-Variable Descriptions:
+
+## Overview
+
+
+In this homework assignment, you will explore, analyze and model a data set containing approximately 8000 records representing a customer at an auto insurance company. Each record has two response variables. The
+first response variable, TARGET_FLAG, is a 1 or a 0. A “1” means that the person was in a car crash. A zero means that the person was not in a car crash. The second response variable is TARGET_AMT. This value is zero if the person did not crash their car. But if they did crash their car, this number will be a value greater than zero.  
+
+Your objective is to build multiple linear regression and binary logistic regression models on the training data to predict the probability that a person will crash their car and also the amount of money it will cost if the person does crash their car. You can only use the variables given to you (or variables that you derive from the variables provided). Below is a short description of the variables of interest in the data set:
+
+
+#### Response Variables:
+
+TARGET_FLAG Was Car in a crash? 1=YES 0=NO None  
+TARGET_AMT If car was in a crash, what was the cost  
+
+#### Explanatory Variables:
 
 AGE Age of Driver 
 BLUEBOOK Value of Vehicle
@@ -89,13 +104,14 @@ insurance_fix <- dplyr::select(insurance, -INDEX)
 
 ```
 
-There are several recurring isues with some columns: all columns containing money amounts have incomptaible punctuation and characters. Also, categorical variables neeed to be changed to factors and their 
+There are several recurring isues with some columns: all columns containing money amounts have incomptaible punctuation and characters. Also, categorical variables neeed to be changed to factors and their factor names edited for intelligibility.  
+
 
 
 ```{r, numeric-vars}
 
-insurance_fix$HOME_VAL <- substr(insurance_fix$HOME_VAL, 2, nchar(insurance_fix$HOME_VAL)) #this code removes the dollar sign 
-insurance_fix$HOME_VAL <- as.numeric(str_remove_all(insurance_fix$HOME_VAL, "[[:punct:]]")) #this code removes the commas and periods for money
+insurance_fix$HOME_VAL <- substr(insurance_fix$HOME_VAL, 2, nchar(insurance_fix$HOME_VAL)) # remove the dollar sign 
+insurance_fix$HOME_VAL <- as.numeric(str_remove_all(insurance_fix$HOME_VAL, "[[:punct:]]")) # remove the comma and periods for money
 
 insurance_fix$BLUEBOOK<- substr(insurance_fix$BLUEBOOK , 2, nchar(insurance_fix$BLUEBOOK ))
 insurance_fix$BLUEBOOK<- as.numeric(str_remove_all(insurance_fix$BLUEBOOK,"[[:punct:]]"))
@@ -111,7 +127,7 @@ insurance_fix$OLDCLAIM <- as.numeric(str_remove_all(insurance_fix$OLDCLAIM, "[[:
 
 ```{r, categorical-vars}
 
-insurance_fix$MSTATUS = as.factor(str_remove(insurance_fix$MSTATUS, 'z_'))
+insurance_fix$MSTATUS = as.factor(str_remove(insurance_fix$MSTATUS, 'z_')) #several variables have a a recurring typo
 insurance_fix$PARENT1 = as.factor(str_remove(insurance_fix$PARENT1, 'z_'))
 insurance_fix$EDUCATION = str_replace(insurance_fix$EDUCATION, '<', 'Less than ') #change < to less than symbol to avoid confusion
 insurance_fix$SEX= as.factor(str_remove(insurance_fix$SEX, 'z_'))
@@ -132,7 +148,10 @@ summary(insurance_fix)
 
 ```
 
-Car age appears to have some values less than 1, including a negative values. These will be chnaged to the mode of 1.
+
+The fixed dataframe now only includes columns that are numeric or factors.  Car age appears to have some values less than 1, including a negative values. These will be chnaged to the mode of 1.
+
+
 ```{r, car-age}
 
 insurance_fix$CAR_AGE[insurance_fix$CAR_AGE <1] <- 1
@@ -141,20 +160,41 @@ insurance_fix$CAR_AGE[insurance_fix$CAR_AGE <1] <- 1
 
 ```
 
+## Data Exploration
+
+### Categorical variables
 
 ```{r, levels}
 
 for (i in 4:ncol(insurance_fix)) {
   if (class((insurance_fix[,i])) == 'factor') {
+      print(names(insurance_fix[i]))
       print(levels(insurance_fix[,i]))
   }
 
 }
 
+
 ```
 
+Looking at categorical variables, most of the columns are binary.
 
-The only remaining issue are blank values for some entries in the 'JOB' column.
+
+### Numeric Variables
+
+```{r, histograms}
+
+
+plot_histogram(insurance_fix)
+
+
+```
+
+Many numeric variables feature the value of zero as a mode.
+
+
+### Missing Values
+
 
 
 ```{r, missing-values}
@@ -166,18 +206,12 @@ vis_dat(insurance_fix %>% dplyr:: select(YOJ, INCOME, HOME_VAL, CAR_AGE))
 
 ```
 
-```{r, histograms}
+Four variables have missing values, however there doesn't appear to be a pattern and it's safe to assume they're missing at random.
 
 
-plot_histogram(insurance_fix)
+## Build Models
 
-
-```
-
-
-
-
-
+### Binary Logistic Regression
 
 
 ```{r, first-model}
@@ -189,7 +223,7 @@ summary(insurance_logistic_model)
 
 ```
 
-
+The first model to consider includes all given variables and does not impute any values.
 
 
 ```{r, performance-function}
@@ -253,6 +287,8 @@ imputed_lm
 ```
 
 
+The second model imputes values using the 'mice' library using classification and regression trees.
+
 
 ```{r, imputed-model-performance}
 
@@ -299,7 +335,7 @@ summary(binned_lm)
 
 ```
 
-
+This and the consequent model considers all binned variables plus old variables. The next model provides a combination of imputation and binning
 
 ```{r, binned-model-performance}
 
@@ -328,3 +364,11 @@ get_cv_performance(insurance_bins, binned_imputed_lm$analyses[[1]])
 get_roc(insurance_bins, binned_imputed_lm$analyses[[1]])
 
 ```
+
+
+
+
+
+
+
+
