@@ -367,6 +367,27 @@ get_roc(insurance_bins, binned_imputed_lm$analyses[[1]])
 
 
 
+### Multiple Linear Regression
+
+```{r, multiple-linear-regression}
+
+### Below code shows output for preliminary regression modelling insurance payout given that a claim has been predicted. R-squared values are very low, but this assumes that a correct prediction from the binary logistic model has been made
+
+#summary(lm(insurance_bins[insurance_bins$TARGET_AMT > 0, ], formula = TARGET_AMT~.-TARGET_FLAG))  
+
+
+
+```
+
+
+
+
+
+
+## Model Selection
+
+
+
 
 
 
