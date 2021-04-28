@@ -3,15 +3,15 @@ title: "Data 621 - HW4"
 author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
 date: "5/2/2021"
 output:
-  pdf_document:
-    toc: TRUE
-    toc_depth: 2 
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    toc: TRUE
+    toc_depth: 2 
 ---
 
 ```{r setup, include=FALSE}
@@ -65,50 +65,73 @@ Your objective is to build multiple linear regression and binary logistic regres
 
 #### Response Variables:
 
-TARGET_FLAG Was Car in a crash? 1=YES 0=NO None  
-TARGET_AMT If car was in a crash, what was the cost  
+|VARIABLE NAME|DEFINITION|THEORETICAL EFFECT|
+|-|-|--|
+|TARGET_FLAG|Was Car in a crash? 1=YES 0=NO|None|
+|TARGET_AMT|If car was in a crash, what was the cost|None|
 
 #### Explanatory Variables:
 
-AGE Age of Driver 
-BLUEBOOK Value of Vehicle
-CAR_AGE Vehicle Age 
-CAR_TYPE Type of Car
-CAR_USE Vehicle Use
-CLM_FREQ # Claims (Past 5 Years)
-EDUCATION Max Education Level
-HOMEKIDS # Children at Home 
-HOME_VAL Home Value 
-INCOME Income
-JOB Job Category
-KIDSDRIV Number of Driving Children 
-MSTATUS Marital Status 
-MVR_PTS Motor Vehicle Record Points 
-OLDCLAIM Total Claims (Past 5 Years)  
-PARENT1 Single Parent  
-RED_CAR A Red Car  
-REVOKED License Revoked (Past 7 Years)  
-SEX Gender  
-TIF Time in Force 
-TRAVTIME Distance to Work 
-URBANICITY Home/Work Area 
-YOJ Years on Job  
+|VARIABLE NAME|DEFINITION|THEORETICAL EFFECT|
+|-|-|--|
+|AGE|Age of Driver|Very young people tend to be risky. Maybe very old people also.|
+|BLUEBOOK|Value of Vehicle|Unknown effect on probability of collision, but probably effect the payout if there is a crash|
+|CAR_AGE|Vehicle Age|Unknown effect on probability of collision, but probably effect the payout if there is a crash|
+|CAR_TYPE|Type of Car|Unknown effect on probability of collision, but probably effect the payout if there is a crash|
+|CAR_USE|Vehicle Use|Commercial vehicles are driven more, so might increase probability of collision|
+|CLM_FREQ|# Claims (Past 5 Years)|The more claims you filed in the past, the more you are likely to file in the future|
+|EDUCATION|Max Education Level|Unknown effect, but in theory more educated people tend to drive more safely|
+|HOMEKIDS|# Children at Home|Unknown effect|
+|HOME_VAL|Home Value|In theory, home owners tend to drive more responsibly|
+|INCOME|Income|In theory, rich people tend to get into fewer crashes|
+|JOB|Job Category|In theory, white collar jobs tend to be safer|
+|KIDSDRIV|# Driving Children|When teenagers drive your car, you are more likely to get into crashes|
+|MSTATUS|Marital Status|In theory, married people drive more safely|
+|MVR_PTS|Motor Vehicle Record Points|If you get lots of traffic tickets, you tend to get into more crashes|
+|OLDCLAIM|Total Claims (Past 5 Years)|If your total payout over the past five years was high, this suggests future payouts will be high|
+|PARENT1|Single Parent|Unknown effect|
+|RED_CAR|A Red Car|Urban legend says that red cars (especially red sports cars) are more risky. Is that true?|
+|REVOKED|License Revoked (Past 7 Years)|If your license was revoked in the past 7 years, you probably are a more risky driver.|
+|SEX|Gender|Urban legend says that women have less crashes then men. Is that true?|
+|TIF|Time in Force|People who have been customers for a long time are usually more safe.|
+|TRAVTIME|Distance to Work|Long drives to work usually suggest greater risk|
+|URBANICITY|Home/Work Area|Unknown|
+|YOJ|Years on Job|People who stay at a job for a long time are usually more safe|
+
 
 
 ```{r, before-fix}
-
-head(insurance)
-summary(insurance)
-
-insurance_fix <- dplyr::select(insurance, -INDEX)
-
+glimpse(insurance)
 ```
+
+There are 8161 observation in the training dataset having 21 feature variables and 2 target variables.
+
+
+
+
+
+```{r}
+head(insurance)
+```
+
+
+
+
+```{r}
+summary(insurance)
+```
+
+
+
+
+
 
 There are several recurring isues with some columns: all columns containing money amounts have incomptaible punctuation and characters. Also, categorical variables neeed to be changed to factors and their factor names edited for intelligibility.  
 
 
 
 ```{r, numeric-vars}
+insurance_fix <- dplyr::select(insurance, -INDEX)
 
 insurance_fix$HOME_VAL <- substr(insurance_fix$HOME_VAL, 2, nchar(insurance_fix$HOME_VAL)) # remove the dollar sign 
 insurance_fix$HOME_VAL <- as.numeric(str_remove_all(insurance_fix$HOME_VAL, "[[:punct:]]")) # remove the comma and periods for money
@@ -155,21 +178,22 @@ The fixed dataframe now only includes columns that are numeric or factors.  Car 
 ```{r, car-age}
 
 insurance_fix$CAR_AGE[insurance_fix$CAR_AGE <1] <- 1
-
-
-
 ```
 
 ## Data Exploration
 
+
 ### Categorical variables
 
 ```{r, levels}
-
+cat_cols = c()
+j <- 1
 for (i in 4:ncol(insurance_fix)) {
   if (class((insurance_fix[,i])) == 'factor') {
       print(names(insurance_fix[i]))
       print(levels(insurance_fix[,i]))
+      cat_cols[j]=names(insurance_fix[i])
+      j <- j+1
   }
 
 }
@@ -179,21 +203,53 @@ for (i in 4:ncol(insurance_fix)) {
 
 Looking at categorical variables, most of the columns are binary.
 
+Below graphs shows the distribution of all categorical predictors.
+
+```{r, fig.length =20, fig.width=10}
+
+ins_fact <-  insurance_fix[cat_cols]
+ins_factm <- melt(ins_fact, measure.vars = cat_cols, variable.name = 'metric', value.name = 'value')
+
+ggplot(ins_factm, aes(x = value)) + 
+  geom_bar() + 
+  scale_fill_brewer(palette = "Set1") + 
+  facet_wrap( ~ metric, nrow = 5L, scales = 'free') + coord_flip()
+```
+
+
 
 ### Numeric Variables
 
+Below 2 graphs shows the distribution of numeric variables. The red graphs are on normal scale and the green ones are on log10 scale. Many numeric variables feature the value of zero as a mode.
+
 ```{r, histograms}
-
-
-plot_histogram(insurance_fix)
-
+plot_histogram(insurance_fix, geom_histogram_args = list("fill" = "tomato4"))
 
 ```
 
-Many numeric variables feature the value of zero as a mode.
 
+
+
+```{r, log10-hist}
+plot_histogram(insurance_fix, scale_x = "log10", geom_histogram_args = list("fill" = "springgreen4"))
+```
 
 ### Missing Values
+
+
+Here are columns having missing values coded as NA:
+
+
+```{r}
+# check columns having missing values 
+insurance_fix %>% summarise_all(funs(sum(is.na(.)))) %>% select_if(~any(.)>0)
+```
+
+
+```{r, fig.width=10, fig.length=10}
+plot_missing(insurance_fix)
+```
+
 
 
 
