@@ -101,15 +101,13 @@ Your objective is to build multiple linear regression and binary logistic regres
 
 
 
+## Data Exploration
+
 ```{r, before-fix}
 glimpse(insurance)
 ```
 
 There are 8161 observation in the training dataset having 21 feature variables and 2 target variables.
-
-
-
-
 
 ```{r}
 head(insurance)
@@ -121,11 +119,6 @@ head(insurance)
 ```{r}
 summary(insurance)
 ```
-
-
-
-
-
 
 There are several recurring issues with some columns: all columns containing money amounts have incomptaible punctuation and characters. Also, categorical variables neeed to be changed to factors and their factor names edited for intelligibility.  
 
@@ -180,8 +173,6 @@ The fixed dataframe now only includes columns that are numeric or factors.  Car 
 
 insurance_fix$CAR_AGE[insurance_fix$CAR_AGE <1] <- 1
 ```
-
-## Data Exploration
 
 
 ### Categorical variables
@@ -332,11 +323,15 @@ mlr_crash_transf$TRAVTIME <- log(mlr_crash_transf$TRAVTIME)
 
 ```
 
+### Zeroes in Home Value
+
+It seems from the histogram above, that the mode of the variable HOME_VAL is 0. Given that, the distribution seems normal if we remove 0s and that the difference between 0 and the number that appears next on the axis is significant, we are assuming that 0 indicates missing values for HOME_VAL. Therefore, we will convert 0s to NAs in HOME_VAL prior to imputing missing values for Binary Logistic Regression Model 3 below.
+
 ## Build Models
 
 ### Binary Logistic Regression
 
-
+#### Model 1
 ```{r, first-model}
 
 
@@ -396,7 +391,9 @@ get_roc(insurance_fix, insurance_logistic_model)
 
 ```
 
+#### Model 2
 
+The second model imputes values using the 'mice' library using classification and regression trees.
 
 ```{r, imputed-model}
 
@@ -410,9 +407,6 @@ imputed_lm
 ```
 
 
-The second model imputes values using the 'mice' library using classification and regression trees.
-
-
 ```{r, imputed-model-performance}
 
 get_cv_performance(insurance_fix, imputed_lm$analyses[[1]])
@@ -421,6 +415,16 @@ get_roc(insurance_fix, imputed_lm$analyses[[1]])
 
 ```
 
+### Model 3
+
+Now we will replicate the model above to see if our assumption about treating 0s in HOME_VAL as missing data, yields a better model fit. 
+```{r, imputed-model}
+
+insurance_impute2 <- mice(insurance_fix2, method = 'cart', m = 1)
+imputed_lm2 <- glm.mids(data = insurance_impute2, formula = TARGET_FLAG ~.-TARGET_AMT, family = 'binomial')
+imputed_lm2
+
+```
 
 ### Addressing Zeroes using Binning
 
@@ -503,6 +507,7 @@ get_roc(insurance_bins, binned_imputed_lm$analyses[[1]])
 ```
 
 First, let's look at the multiple linear regression using all variables.  The R^2 value is very low, around 4%, and many of the variables are not significant.
+
 ```{r multiple-linear-regression-all-data}
 mlr<- lm(TARGET_AMT ~ . ,data=mlr_crash)
 summary(mlr)
@@ -510,7 +515,7 @@ summary(mlr)
 ```
 Using our log transformation on certain variables, the results are slightly worse. 
 ```{r multiple-linear-regression-log-data-with-fixed-nas}
-mlr<- lm(TARGET_AMT ~ . ,data=mlr_crash_transf)
+mlr<- lm(TARGET_AMT ~ . ,data=mlr_crash_transf))
 summary(mlr)
 ```
 
@@ -616,17 +621,33 @@ Using the transformed variables, we will choose the model that has 7 parameters 
 coef(mlr_full,7)
 ```
 
+### Multiple Regression Using Leaps
+
+Using the leaps package on one of the transformed datasets, we will try to find the best model.
+
+```{r,Linear}
+
+insurance_LINEAR <- regsubsets(TARGET_AMT ~ . ,  data = insurance_fix2,
+               nbest = 1,       # 1 best model for each number of predictors
+               nvmax = NULL,    # NULL for no limit on number of variables
+               force.in = NULL, force.out = NULL,
+               method = "exhaustive")
+insurance_LINEAR
+```
 
 
 
+```{r,adj-r2}
+which.max(summary.out$adjr2)
 
+summary.out$which[12,]
+```
 
-
-
-
-
+```{r,best-model}
+best.model <- lm(TARGET_AMT~MSTATUS+CAR_TYPE+OLDCLAIM+TARGET_FLAG+PARENT1+BLUEBOOK+YOJ+HOME_VAL+REVOKED, data =insurance_fix2 )
+summary(best.model)
+```
 ## Model Selection
-
 
 
 
