@@ -42,6 +42,7 @@ library(ggplot2)
 library(readr)
 library(reshape2)
 library(purrr)
+library(leaps)
 
 set.seed(2012)
 
@@ -126,7 +127,7 @@ summary(insurance)
 
 
 
-There are several recurring isues with some columns: all columns containing money amounts have incomptaible punctuation and characters. Also, categorical variables neeed to be changed to factors and their factor names edited for intelligibility.  
+There are several recurring issues with some columns: all columns containing money amounts have incomptaible punctuation and characters. Also, categorical variables neeed to be changed to factors and their factor names edited for intelligibility.  
 
 
 
@@ -172,7 +173,7 @@ summary(insurance_fix)
 ```
 
 
-The fixed dataframe now only includes columns that are numeric or factors.  Car age appears to have some values less than 1, including a negative values. These will be chnaged to the mode of 1.
+The fixed dataframe now only includes columns that are numeric or factors.  Car age appears to have some values less than 1, including a negative values. These will be changed to the mode of 1.
 
 
 ```{r, car-age}
@@ -264,6 +265,72 @@ vis_dat(insurance_fix %>% dplyr:: select(YOJ, INCOME, HOME_VAL, CAR_AGE))
 
 Four variables have missing values, however there doesn't appear to be a pattern and it's safe to assume they're missing at random.
 
+### Correlation
+For the purposes of seeing correlation between variables, we're going to replace NA values with the median.
+```{r, corrplot}
+
+numer_data <- insurance_fix[,c('TARGET_AMT','AGE','YOJ','INCOME','HOME_VAL','TRAVTIME','BLUEBOOK','TIF','OLDCLAIM','CLM_FREQ','MVR_PTS','CAR_AGE')]
+
+AGE_MEDIAN <- median(filter(insurance_fix,AGE > 0)$AGE)
+INCOME_MEDIAN <- median(filter(insurance_fix,INCOME > 0)$INCOME)
+YOJ_MEDIAN <- median(filter(insurance_fix,YOJ > 0)$YOJ)
+HOME_VAL_MEDIAN <- median(filter(insurance_fix,HOME_VAL > 0)$HOME_VAL)
+CAR_AGE_MEDIAN <- median(filter(insurance_fix,CAR_AGE > 0)$CAR_AGE)
+
+
+numer_data <- numer_data %>% dplyr::mutate(AGE = replace_na(AGE,AGE_MEDIAN),
+                             INCOME = replace_na(INCOME,INCOME_MEDIAN),
+                             YOJ = replace_na(YOJ,YOJ_MEDIAN),
+                             HOME_VAL = replace_na(HOME_VAL,HOME_VAL_MEDIAN),
+                             CAR_AGE = replace_na(CAR_AGE,CAR_AGE_MEDIAN))
+corrplot(cor(numer_data),type="upper")
+
+```
+It's clear there are some positive correlations between the following variables:  
+* **Income** & **Home value**: 0.54  
+* **Income** & **Bluebook**: 0.42  
+* **Income** & **Car age**: 0.39  
+* **Claim Frequency** & **Old claims**: 0.50  
+* **Claim Frequence** & **MVR_PTS**:0.39    
+
+## Data Prepation
+### Removing TARGET_FLAG
+Our multiple linear regression model will be predicting the amount of money someone receives if they crash, so we will be removing the variable *TARGET_FLAG*
+```{r mlr-remove-target-flag}
+mlr_crash <- subset(filter(insurance_fix,TARGET_FLAG==1),select = -c(TARGET_FLAG))
+
+```
+### Handling Missing Data - Multiple Linear Regression
+For the multiple linear regression, we're going to assume that the NULL values will take the median value for the variable.
+```{r mlr-fix-nulls}
+mlr_crash_fix_na <- mlr_crash
+
+AGE_MEDIAN <- median(filter(mlr_crash_fix_na,AGE > 0)$AGE)
+INCOME_MEDIAN <- median(filter(mlr_crash_fix_na,INCOME > 0)$INCOME)
+YOJ_MEDIAN <- median(filter(mlr_crash_fix_na,YOJ > 0)$YOJ)
+HOME_VAL_MEDIAN <- median(filter(mlr_crash_fix_na,HOME_VAL > 0)$HOME_VAL)
+CAR_AGE_MEDIAN <- median(filter(mlr_crash_fix_na,CAR_AGE > 0)$CAR_AGE)
+
+mlr_crash_fix_na <- mlr_crash_fix_na %>% dplyr::mutate(AGE = replace_na(AGE,AGE_MEDIAN),
+                             INCOME = replace_na(INCOME,INCOME_MEDIAN),
+                             YOJ = replace_na(YOJ,YOJ_MEDIAN),
+                             HOME_VAL = replace_na(HOME_VAL,HOME_VAL_MEDIAN),
+                             CAR_AGE = replace_na(CAR_AGE,CAR_AGE_MEDIAN))
+```
+
+### Transforming Variables - Multiple Linear Regression
+There some variables that are not normally distributed so we're going to try using a log transformation later to see if that creates a better model.  For a few variables with values, 0, we added 1 to avoid negative infinity when taking the log of those variables.  This will not alter our modeling results significantly.
+```{r mlr-log-trans}
+mlr_crash_transf <- mlr_crash_fix_na
+mlr_crash_transf$AGE <- log(mlr_crash_transf$AGE)
+mlr_crash_transf$BLUEBOOK <- log(mlr_crash_transf$BLUEBOOK)
+mlr_crash_transf$CAR_AGE <- log(mlr_crash_transf$CAR_AGE + 1)
+mlr_crash_transf$HOME_VAL <- log(mlr_crash_transf$HOME_VAL + 1)
+mlr_crash_transf$INCOME <- log(mlr_crash_transf$INCOME + 1)
+mlr_crash_transf$OLDCLAIM <- log(mlr_crash_transf$OLDCLAIM + 1)
+mlr_crash_transf$TRAVTIME <- log(mlr_crash_transf$TRAVTIME)
+
+```
 
 ## Build Models
 
@@ -434,6 +501,124 @@ get_roc(insurance_bins, binned_imputed_lm$analyses[[1]])
 
 
 ```
+
+First, let's look at the multiple linear regression using all variables.  The R^2 value is very low, around 4%, and many of the variables are not significant.
+```{r multiple-linear-regression-all-data}
+mlr<- lm(TARGET_AMT ~ . ,data=mlr_crash)
+summary(mlr)
+
+```
+Using our log transformation on certain variables, the results are slightly worse. 
+```{r multiple-linear-regression-log-data-with-fixed-nas}
+mlr<- lm(TARGET_AMT ~ . ,data=mlr_crash_transf)
+summary(mlr)
+```
+
+Now let's use backwards elimination to remove some of variables that are not significant.
+```{r multiple-linear-regression-backward-elim-1}
+mlr1 <- lm(TARGET_AMT ~ . ,data=mlr_crash_transf)
+#summary(mlr1)
+mlr2 <- update(mlr1,TARGET_AMT~. - OLDCLAIM) 
+#summary(mlr2)
+mlr3 <- update(mlr2,TARGET_AMT~. - YOJ) 
+#summary(mlr3)
+mlr4 <- update(mlr3,TARGET_AMT~. - URBANICITY) 
+#summary(mlr4)
+mlr5 <- update(mlr4,TARGET_AMT~. - TRAVTIME) 
+#summary(mlr5)
+mlr6 <- update(mlr5,TARGET_AMT~. - INCOME) 
+#summary(mlr6)
+mlr7 <- update(mlr6,TARGET_AMT~. - CLM_FREQ) 
+#summary(mlr7)
+mlr8 <- update(mlr7,TARGET_AMT~. - TIF) 
+#summary(mlr8)
+mlr9 <- update(mlr8,TARGET_AMT~. - RED_CAR) 
+#summary(mlr9)
+mlr10 <- update(mlr9,TARGET_AMT~. - PARENT1) 
+#summary(mlr10)
+mlr11 <- update(mlr10,TARGET_AMT~. - KIDSDRIV) 
+#summary(mlr11)
+mlr12 <- update(mlr11,TARGET_AMT~. - AGE) 
+#summary(mlr12)
+mlr13 <- update(mlr12,TARGET_AMT~. - CAR_USE)
+#summary(mlr13)
+mlr14 <- update(mlr13,TARGET_AMT~. - JOB) 
+#summary(mlr14)
+mlr15 <- update(mlr14,TARGET_AMT~. - EDUCATION) 
+#summary(mlr15)
+mlr16 <- update(mlr15,TARGET_AMT~. - CAR_TYPE) 
+#summary(mlr16)
+mlr17 <- update(mlr16,TARGET_AMT~. - HOMEKIDS) 
+#summary(mlr17)
+mlr18 <- update(mlr17,TARGET_AMT~. - CAR_AGE) 
+#summary(mlr18)
+mlr19 <- update(mlr18,TARGET_AMT~. - HOME_VAL) 
+#summary(mlr19)
+mlr20 <- update(mlr19,TARGET_AMT~. - MSTATUS) 
+#summary(mlr20)
+mlr21 <- update(mlr20,TARGET_AMT~. - REVOKED) 
+#summary(mlr21)
+mlr22 <- update(mlr21,TARGET_AMT~. - SEX) 
+summary(mlr22)
+```
+
+Now let's use forward addition to add of variables one at a time.
+```{r multiple-linear-regression-backward-elim}
+mlr_fwd <- lm(TARGET_AMT ~ BLUEBOOK + MVR_PTS + SEX ,data= mlr_crash_transf)
+#summary(mlr_fwd)
+
+mlr_fwd <- lm(TARGET_AMT ~ BLUEBOOK + MVR_PTS + SEX + MSTATUS ,data= mlr_crash_transf)
+#summary(mlr_fwd)
+
+mlr_fwd <- lm(TARGET_AMT ~ BLUEBOOK + MVR_PTS + SEX + MSTATUS + HOME_VAL,data= mlr_crash_transf)
+#summary(mlr_fwd)
+
+mlr_fwd <- lm(TARGET_AMT ~ BLUEBOOK + MVR_PTS + SEX + MSTATUS + HOME_VAL + REVOKED,data= mlr_crash_transf)
+#summary(mlr_fwd)
+
+mlr_fwd <- lm(TARGET_AMT ~ BLUEBOOK + MVR_PTS + SEX + MSTATUS + HOME_VAL + REVOKED + CAR_AGE,data= mlr_crash_transf)
+summary(mlr_fwd)
+```
+
+The function, *regsubsets()*, will go through iterations to find the best model using parameters = 1,2,3,4,... n. Here we see the model with 13 variables (represented by the red dot) had the lowest cp, which indicates the best model. The R^2 remains to be around 3.5% from about 13 variables and higher, which is extremely low.  
+
+```{r multiple-linear-regression-2}
+mlr_full <- regsubsets(TARGET_AMT ~ . ,data=mlr_crash, nvmax=NULL)
+mlr_summary <- summary(mlr_full)
+
+par(mfrow=c(2,2))
+plot(mlr_summary$cp,xlab = "# Variables", ylab = "cp - estimate of prediction error")
+points(13,mlr_summary$cp[13],pch=20,col="red")
+plot(mlr_summary$rsq,xlab = "# Variables", ylab = "R^2")
+
+```
+
+Here we will assume our model has 13 parameters and this gives us the following equation:
+```{r mlr_coeff-2}
+coef(mlr_full,13)
+
+```
+
+
+Using the regsubsets function and our data that includes log transformations, we see it suggests a model with 7 variables is best look at the cp value.
+```{r multiple-linear-regression-3}
+mlr_full_transf <- regsubsets(TARGET_AMT ~ . ,data=mlr_crash_transf, nvmax=NULL)
+mlr_summary_transf <- summary(mlr_full_transf)
+
+par(mfrow=c(1,2))
+plot(mlr_summary_transf$cp,xlab = "# Variables", ylab = "cp - estimate of prediction error")
+points(7,mlr_summary_transf$cp[7],pch=20,col="red")
+plot(mlr_summary_transf$rsq,xlab = "# Variables", ylab = "R^2")
+```
+
+Using the transformed variables, we will choose the model that has 7 parameters since the R^2 value doesn't change by much as the number of parameters increases.  This gives us the following equation:  
+```{r mlr_coeff-3}
+coef(mlr_full,7)
+```
+
+
+
+
 
 
 
