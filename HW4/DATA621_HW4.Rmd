@@ -327,6 +327,10 @@ mlr_crash_transf$TRAVTIME <- log(mlr_crash_transf$TRAVTIME)
 
 It seems from the histogram above, that the mode of the variable HOME_VAL is 0. Given that, the distribution seems normal if we remove 0s and that the difference between 0 and the number that appears next on the axis is significant, we are assuming that 0 indicates missing values for HOME_VAL. Therefore, we will convert 0s to NAs in HOME_VAL prior to imputing missing values for Binary Logistic Regression Model 3 below.
 
+```{r,insurance-fix 2}
+insurance_fix2 <- insurance_fix 
+insurance_fix2$HOME_VAL <-ifelse(insurance_fix2$HOME_VAL == 0, NA, insurance_fix2$HOME_VAL)
+```
 ## Build Models
 
 ### Binary Logistic Regression
