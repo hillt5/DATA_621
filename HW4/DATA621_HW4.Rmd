@@ -1,19 +1,17 @@
-
-
 ---
 title: "Data 621 - HW4"
 author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
 date: "5/2/2021"
 output:
+  pdf_document:
+    toc: TRUE
+    toc_depth: 2 
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
-  pdf_document:
-    toc: TRUE
-    toc_depth: 2 
 ---
 
 ```{r setup, include=FALSE}
@@ -54,6 +52,7 @@ set.seed(2012)
 
 ```{r data}
 insurance <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW4/insurance_training_data.csv', stringsAsFactors =  FALSE)
+insurance_test <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW4/insurance_training_data.csv')
 ```
 
 
@@ -111,14 +110,8 @@ glimpse(insurance)
 
 There are 8161 observation in the training dataset having 21 feature variables and 2 target variables.
 
-```{r}
+```{r,head}
 head(insurance)
-```
-
-
-
-
-```{r}
 summary(insurance)
 ```
 
@@ -172,7 +165,6 @@ The fixed dataframe now only includes columns that are numeric or factors.  Car 
 
 
 ```{r, car-age}
-
 insurance_fix$CAR_AGE[insurance_fix$CAR_AGE <1] <- 1
 ```
 
@@ -234,7 +226,7 @@ plot_histogram(insurance_fix, scale_x = "log10", geom_histogram_args = list("fil
 Here are columns having missing values coded as NA:
 
 
-```{r}
+```{r,missing-val}
 # check columns having missing values 
 insurance_fix %>% summarise_all(funs(sum(is.na(.)))) %>% select_if(~any(.)>0)
 ```
@@ -344,6 +336,25 @@ insurance_fix2 <- insurance_fix
 insurance_fix2$HOME_VAL <-ifelse(insurance_fix2$HOME_VAL == 0, NA, insurance_fix2$HOME_VAL)
 ```
 
+### Addressing Zeroes using Binning
+
+The histograms for several variables indicate that there many with an overrepresentation of 'zero' values. Some of the worst offenders include CAR_AGE, HOME_VAL, HOMEKIDS, KIDSDRIV, OLDCLAIM, TIF, and YOJ.  INCOME also has many 'zero' or very low values, and also similar to CAR_AGE and HOME_VAL because, omitting zero, the rest of the distributions appear to be skewed, approximately normal distributions. To avoid problems with interpretation, the 4th model will consider these continuous variables as categorical variables defined as a number range.
+
+```{r, binned-data}
+insurance_bins <- insurance_fix %>%
+  mutate(CAR_AGE_BIN=cut(CAR_AGE, breaks=c(-Inf, 1, 3, 12, Inf), labels=c("New","Like New","Average", 'Old'))) %>% #four level fator for car age
+  mutate(HOME_VAL_BIN=cut(HOME_VAL, breaks=c(-Inf, 0, 50000, 150000, 250000, Inf), labels=c("Zero", "$0-$50k", "$50k-$150k","$150k-$250k", 'Over $250k'))) %>% #bins for zero, plus four other price ranges
+  mutate(HAS_HOME_KIDS = as.factor(case_when(HOMEKIDS == 0 ~ 'No kids', HOMEKIDS > 0 ~ ('Has kids')))) %>% #binary variable for whether family has kids
+  mutate(HAS_KIDSDRIV = as.factor(case_when(KIDSDRIV == 0 ~ 'No kids driving', KIDSDRIV > 0 ~ 'Has kids driving'))) %>% #binary variable for whether family has kids driving
+  mutate(OLDCLAIM_BIN =cut(OLDCLAIM, breaks=c(-Inf, 0, 3000, 6000, 9000, Inf), labels=c("Zero","$0-$3k", "$3k-$6k", "$6k-$9k",'Over $9k'))) %>% #bins for zero, plus four other price ranges based on quartiles
+  mutate(TIF_BIN =cut(TIF, breaks=c(-Inf, 0, 1, 4, 7, Inf), labels=c("Zero","Less than 1 year", "1-4 years", "4-7 years",'Over 7 years'))) %>% #bins for zero, plus four other price ranges based on quartiles
+  mutate(YOJ_BIN =cut(YOJ, breaks=c(-Inf, 0, 10, 15, Inf), labels=c("Zero","Less than 10 years", 'Between 10-15 years', 'Over 15 years'))) %>% #bins for zero, plus three other categories based on quartiles
+  dplyr::select(-c(CAR_AGE, HOME_VAL, HOMEKIDS, KIDSDRIV, OLDCLAIM, TIF, YOJ)) #drop the binned features
+
+summary(insurance_bins)
+head(insurance_bins)
+```
+
 ## Build Models
 
 ### Model1
@@ -446,31 +457,7 @@ imputed_lm2
 
 ```
 
-### Addressing Zeroes using Binning
-
-
-
-The histograms for several variables indicate that there many with an overrepresentation of 'zero' values. Some of the worst offenders include CAR_AGE, HOME_VAL, HOMEKIDS, KIDSDRIV, OLDCLAIM, TIF, and YOJ.  INCOME also has many 'zero' or very low values, and also similar to CAR_AGE and HOME_VAL because, omitting zero, the rest of the distributions appear to be skewed, approximately normal distributions. To avoid problems with interpretation, the next model will consider these continuous variables as categorical variables defined as a number range.
-
-```{r, binned-data}
-
-
-insurance_bins <- insurance_fix %>%
-  mutate(CAR_AGE_BIN=cut(CAR_AGE, breaks=c(-Inf, 1, 3, 12, Inf), labels=c("New","Like New","Average", 'Old'))) %>% #four level fator for car age
-  mutate(HOME_VAL_BIN=cut(HOME_VAL, breaks=c(-Inf, 0, 50000, 150000, 250000, Inf), labels=c("Zero", "$0-$50k", "$50k-$150k","$150k-$250k", 'Over $250k'))) %>% #bins for zero, plus four other price ranges
-  mutate(HAS_HOME_KIDS = as.factor(case_when(HOMEKIDS == 0 ~ 'No kids', HOMEKIDS > 0 ~ ('Has kids')))) %>% #binary variable for whether family has kids
-  mutate(HAS_KIDSDRIV = as.factor(case_when(KIDSDRIV == 0 ~ 'No kids driving', KIDSDRIV > 0 ~ 'Has kids driving'))) %>% #binary variable for whether family has kids driving
-  mutate(OLDCLAIM_BIN =cut(OLDCLAIM, breaks=c(-Inf, 0, 3000, 6000, 9000, Inf), labels=c("Zero","$0-$3k", "$3k-$6k", "$6k-$9k",'Over $9k'))) %>% #bins for zero, plus four other price ranges based on quartiles
-  mutate(TIF_BIN =cut(TIF, breaks=c(-Inf, 0, 1, 4, 7, Inf), labels=c("Zero","Less than 1 year", "1-4 years", "4-7 years",'Over 7 years'))) %>% #bins for zero, plus four other price ranges based on quartiles
-  mutate(YOJ_BIN =cut(YOJ, breaks=c(-Inf, 0, 10, 15, Inf), labels=c("Zero","Less than 10 years", 'Between 10-15 years', 'Over 15 years'))) %>% #bins for zero, plus three other categories based on quartiles
-  dplyr::select(-c(CAR_AGE, HOME_VAL, HOMEKIDS, KIDSDRIV, OLDCLAIM, TIF, YOJ)) #drop the binned features
-
-
-
-summary(insurance_bins)
-head(insurance_bins)
-
-```
+### Model 4
 
 ```{r, binned-model}
 
@@ -482,15 +469,17 @@ summary(binned_lm)
 
 ```
 
-This and the consequent model considers all binned variables plus old variables. The next model provides a combination of imputation and binning
+This and the consequent model considers all binned variables plus old variables. 
 
 ```{r, binned-model-performance}
 
 get_cv_performance(insurance_bins, binned_lm)
 get_roc(insurance_bins, binned_lm)
-
-
 ```
+
+### Model 5
+
+The next model provides a combination of imputation and binning.
 
 ```{r, binned-and-imputed-model}
 
@@ -503,8 +492,6 @@ binned_imputed_lm
 
 ```
 
-
-
 ```{r, binned-and-imputed-model-performance}
 
 get_cv_performance(insurance_bins, binned_imputed_lm$analyses[[1]])
@@ -512,28 +499,20 @@ get_roc(insurance_bins, binned_imputed_lm$analyses[[1]])
 
 ```
 
-
-
 ### Multiple Linear Regression
 
-```{r, multiple-linear-regression}
+### Model 1
 
-### Below code shows output for preliminary regression modelling insurance payout given that a claim has been predicted. R-squared values are very low, but this assumes that a correct prediction from the binary logistic model has been made
-
-#summary(lm(insurance_bins[insurance_bins$TARGET_AMT > 0, ], formula = TARGET_AMT~.-TARGET_FLAG))  
-
-
-
-```
-
-First, let's look at the multiple linear regression using all variables.  The R^2 value is very low, around 4%, and many of the variables are not significant.
+Below code shows output for preliminary regression modelling insurance payout given that a claim has been predicted. R-squared values are very low, but this assumes that a correct prediction from the binary logistic model has been made.
 
 ```{r multiple-linear-regression-all-data}
 mlr<- lm(TARGET_AMT ~ . ,data=mlr_crash)
 summary(mlr)
-
 ```
+The R^2 value is very low, around 4%, and many of the variables are not significant.
 
+
+### Model 2
 
 Using our log transformation on certain variables, the results are slightly worse. 
 
@@ -543,82 +522,86 @@ summary(mlr)
 ```
 
 
+### Model 3: Backwards Elimination
 Now let's use backwards elimination to remove some of variables that are not significant.
 
 ```{r multiple-linear-regression-backward-elim-1}
 mlr1 <- lm(TARGET_AMT ~ . ,data=mlr_crash_transf)
-#summary(mlr1)
+summary(mlr1)
 mlr2 <- update(mlr1,TARGET_AMT~. - OLDCLAIM) 
-#summary(mlr2)
+summary(mlr2)
 mlr3 <- update(mlr2,TARGET_AMT~. - YOJ) 
-#summary(mlr3)
+summary(mlr3)
 mlr4 <- update(mlr3,TARGET_AMT~. - URBANICITY) 
-#summary(mlr4)
+summary(mlr4)
 mlr5 <- update(mlr4,TARGET_AMT~. - TRAVTIME) 
-#summary(mlr5)
+summary(mlr5)
 mlr6 <- update(mlr5,TARGET_AMT~. - INCOME) 
-#summary(mlr6)
+summary(mlr6)
 mlr7 <- update(mlr6,TARGET_AMT~. - CLM_FREQ) 
-#summary(mlr7)
+summary(mlr7)
 mlr8 <- update(mlr7,TARGET_AMT~. - TIF) 
-#summary(mlr8)
+summary(mlr8)
 mlr9 <- update(mlr8,TARGET_AMT~. - RED_CAR) 
-#summary(mlr9)
+summary(mlr9)
 mlr10 <- update(mlr9,TARGET_AMT~. - PARENT1) 
-#summary(mlr10)
+summary(mlr10)
 mlr11 <- update(mlr10,TARGET_AMT~. - KIDSDRIV) 
-#summary(mlr11)
+summary(mlr11)
 mlr12 <- update(mlr11,TARGET_AMT~. - AGE) 
-#summary(mlr12)
+summary(mlr12)
 mlr13 <- update(mlr12,TARGET_AMT~. - CAR_USE)
-#summary(mlr13)
+summary(mlr13)
 mlr14 <- update(mlr13,TARGET_AMT~. - JOB) 
-#summary(mlr14)
+summary(mlr14)
 mlr15 <- update(mlr14,TARGET_AMT~. - EDUCATION) 
-#summary(mlr15)
+summary(mlr15)
 mlr16 <- update(mlr15,TARGET_AMT~. - CAR_TYPE) 
-#summary(mlr16)
+summary(mlr16)
 mlr17 <- update(mlr16,TARGET_AMT~. - HOMEKIDS) 
-#summary(mlr17)
+summary(mlr17)
 mlr18 <- update(mlr17,TARGET_AMT~. - CAR_AGE) 
-#summary(mlr18)
+summary(mlr18)
 mlr19 <- update(mlr18,TARGET_AMT~. - HOME_VAL) 
-#summary(mlr19)
+summary(mlr19)
 mlr20 <- update(mlr19,TARGET_AMT~. - MSTATUS) 
-#summary(mlr20)
+summary(mlr20)
 mlr21 <- update(mlr20,TARGET_AMT~. - REVOKED) 
-#summary(mlr21)
+summary(mlr21)
 mlr22 <- update(mlr21,TARGET_AMT~. - SEX) 
 summary(mlr22)
 ```
+
+## Model 4: Forward Elimination
 
 Now let's use forward addition to add of variables one at a time.
 
 ```{r multiple-linear-regression-backward-elim}
 mlr_fwd <- lm(TARGET_AMT ~ BLUEBOOK + MVR_PTS + SEX ,data= mlr_crash_transf)
-#summary(mlr_fwd)
+summary(mlr_fwd)
 
 mlr_fwd <- lm(TARGET_AMT ~ BLUEBOOK + MVR_PTS + SEX + MSTATUS ,data= mlr_crash_transf)
-#summary(mlr_fwd)
+summary(mlr_fwd)
 
 mlr_fwd <- lm(TARGET_AMT ~ BLUEBOOK + MVR_PTS + SEX + MSTATUS + HOME_VAL,data= mlr_crash_transf)
-#summary(mlr_fwd)
+summary(mlr_fwd)
 
 mlr_fwd <- lm(TARGET_AMT ~ BLUEBOOK + MVR_PTS + SEX + MSTATUS + HOME_VAL + REVOKED,data= mlr_crash_transf)
-#summary(mlr_fwd)
+summary(mlr_fwd)
 
 mlr_fwd <- lm(TARGET_AMT ~ BLUEBOOK + MVR_PTS + SEX + MSTATUS + HOME_VAL + REVOKED + CAR_AGE,data= mlr_crash_transf)
 summary(mlr_fwd)
 ```
 
 
+### Model 5: Picking the best model using Leaps
+
 The function, *regsubsets()*, will go through iterations to find the best model using parameters = 1,2,3,4,... n. Here we see the model with 13 variables (represented by the red dot) had the lowest cp, which indicates the best model. The R^2 remains to be around 3.5% from about 13 variables and higher, which is extremely low.  
 
 
 ```{r multiple-linear-regression-2}
 mlr_full <- regsubsets(TARGET_AMT ~ . ,data=mlr_crash, nvmax=NULL)
-mlr_summary <- summary(mlr_full)
-
+mlr_summary<- summary(mlr_full)
 par(mfrow=c(2,2))
 plot(mlr_summary$cp,xlab = "# Variables", ylab = "cp - estimate of prediction error")
 points(13,mlr_summary$cp[13],pch=20,col="red")
@@ -627,14 +610,8 @@ plot(mlr_summary$rsq,xlab = "# Variables", ylab = "R^2")
 ```
 
 
-Here we will assume our model has 13 parameters and this gives us the following equation:
 
-```{r mlr_coeff-2}
-coef(mlr_full,13)
-
-```
-
-
+### Model 6: 
 Using the regsubsets function and our data that includes log transformations, we see it suggests a model with 7 variables is best look at the cp value.
 
 ```{r multiple-linear-regression-3}
@@ -654,17 +631,64 @@ Using the transformed variables, we will choose the model that has 7 parameters 
 coef(mlr_full,7)
 ```
 
-### Multiple Regression Using Leaps
+```{r,model-6}
+model_6 <- lm(TARGET_AMT ~ MSTATUS +JOB+ BLUEBOOK + CAR_AGE+EDUCATION, data = mlr_crash_transf)
+summary(model_6)
+```
+### Model 7
 
-For this model, we will use the log transformation of the response variable. We will also use the predictors that seems to have the most significant relationship for the model.
+For this model, we used the log transformation of the response variable and a combination of predictors. Here is the model that yielded the best results:
 
 ```{r, model-log}
-model_log <- lm(log(TARGET_AMT) ~ MSTATUS + SEX + BLUEBOOK + CLM_FREQ + MVR_PTS+EDUCATION, data = mlr_crash_transf)
+model_log <- lm(log(TARGET_AMT) ~ MSTATUS+SEX+ BLUEBOOK + CLM_FREQ + MVR_PTS+EDUCATION, data = mlr_crash_transf)
 summary(model_log)
+```
+### Model 8
+
+```{r}
+summary(insurance_bins)
 ```
 
 
-```{r, diagnostic}
+
+## Model Selection & Prediction
+
+### Binary Logistic Regression
+
+Based on the peformance diagnostics, model 4 or our binned model performs the best. AIC is 5816 and here are the other performance diagnostics:
+
+```{r, binned-model-performance2}
+
+get_cv_performance(insurance_bins, binned_lm)
+get_roc(insurance_bins, binned_lm)
+```
+### Multiple Linear Regression
+
+We will look at the diagnostic plot for the two models that had the highest adjusted r^2. Particularly model 1(with all variables minus TARGET_FLAG) and model 7 (log of response variable and a combination of predictors).
+
+#### Model 1
+
+Model 1 had an adjusted r^2 of 0.02145 and is significant. Here is the diagnostic plot for model 1
+
+```{r, diagnostic-model1}
+res0 <- resid(mlr)
+plot(density(res0))
+qqnorm(res0)
+qqline(res0)
+ggplot(data = mlr, aes(x = .fitted, y = .resid)) +
+  geom_jitter() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  xlab("Fitted values") +
+  ylab("Residuals")
+```
+
+The density plot seems skewed and the qq plot deviates quite a bit.
+
+#### Model 7
+
+Model 7 had an adjusted r^2 of 0.02158 and is significant
+
+```{r, diagnostic-model7}
 res0 <- resid(model_log)
 plot(density(res0))
 qqnorm(res0)
@@ -675,13 +699,147 @@ ggplot(data = model_log, aes(x = .fitted, y = .resid)) +
   xlab("Fitted values") +
   ylab("Residuals")
 ```
+The density and qqplot for model 7 seem somewhat normally distributed. The residual plot indicates homoscedasticity.
+
+#### Prediction
 
 
-## Model Selection
+```{r, test,echo=FALSE}
+insurance_fix3 <- dplyr::select(insurance_test, -INDEX)
 
+insurance_fix3$HOME_VAL <- substr(insurance_fix3$HOME_VAL, 2, nchar(insurance_fix3$HOME_VAL)) # remove the dollar sign 
+insurance_fix3$HOME_VAL <- as.numeric(str_remove_all(insurance_fix3$HOME_VAL, "[[:punct:]]")) # remove the comma and periods for money
 
+insurance_fix3$BLUEBOOK<- substr(insurance_fix3$BLUEBOOK , 2, nchar(insurance_fix3$BLUEBOOK ))
+insurance_fix3$BLUEBOOK<- as.numeric(str_remove_all(insurance_fix3$BLUEBOOK,"[[:punct:]]"))
 
+insurance_fix3$INCOME  <- substr(insurance_fix3$INCOME, 2, nchar(insurance_fix3$INCOME))
+insurance_fix3$INCOME <- as.numeric(str_remove_all(insurance_fix3$INCOME, "[[:punct:]]"))
 
+insurance_fix3$OLDCLAIM <- substr(insurance_fix3$OLDCLAIM, 2, nchar(insurance_fix3$OLDCLAIM))
+insurance_fix3$OLDCLAIM <- as.numeric(str_remove_all(insurance_fix3$OLDCLAIM, "[[:punct:]]"))
 
+insurance_fix3$MSTATUS = as.factor(str_remove(insurance_fix3$MSTATUS, 'z_')) #several variables have a a recurring typo
+insurance_fix3$PARENT1 = as.factor(str_remove(insurance_fix3$PARENT1, 'z_'))
+insurance_fix3$EDUCATION = str_replace(insurance_fix3$EDUCATION, '<', 'Less than ') #change < to less than symbol to avoid confusion
+insurance_fix3$SEX= as.factor(str_remove(insurance_fix3$SEX, 'z_'))
+insurance_fix3$EDUCATION = as.factor(str_remove(insurance_fix3$EDUCATION, 'z_'))
+insurance_fix3$JOB[insurance_fix3$JOB == ""] <- 'Other Job' #recode blank spaces as 'Other Job'
+insurance_fix3$JOB = as.factor(str_remove(insurance_fix3$JOB, 'z_'))
+insurance_fix3$CAR_USE = as.factor(str_remove(insurance_fix3$CAR_USE, 'z_'))
+insurance_fix3$CAR_TYPE = as.factor(str_remove(insurance_fix3$CAR_TYPE, 'z_'))
+insurance_fix3$URBANICITY = as.factor(str_remove(insurance_fix3$URBANICITY, 'z_'))
+insurance_fix3$REVOKED = as.factor(str_remove(insurance_fix3$REVOKED, 'z_'))
+insurance_fix3$RED_CAR = as.factor(str_remove(insurance_fix3$RED_CAR, 'z_'))
+insurance_fix3$CAR_AGE[insurance_fix3$CAR_AGE <1] <- 1
+insurance_bins2 <- insurance_fix3 %>%
+  mutate(CAR_AGE_BIN=cut(CAR_AGE, breaks=c(-Inf, 1, 3, 12, Inf), labels=c("New","Like New","Average", 'Old'))) %>% #four level fator for car age
+  mutate(HOME_VAL_BIN=cut(HOME_VAL, breaks=c(-Inf, 0, 50000, 150000, 250000, Inf), labels=c("Zero", "$0-$50k", "$50k-$150k","$150k-$250k", 'Over $250k'))) %>% #bins for zero, plus four other price ranges
+  mutate(HAS_HOME_KIDS = as.factor(case_when(HOMEKIDS == 0 ~ 'No kids', HOMEKIDS > 0 ~ ('Has kids')))) %>% #binary variable for whether family has kids
+  mutate(HAS_KIDSDRIV = as.factor(case_when(KIDSDRIV == 0 ~ 'No kids driving', KIDSDRIV > 0 ~ 'Has kids driving'))) %>% #binary variable for whether family has kids driving
+  mutate(OLDCLAIM_BIN =cut(OLDCLAIM, breaks=c(-Inf, 0, 3000, 6000, 9000, Inf), labels=c("Zero","$0-$3k", "$3k-$6k", "$6k-$9k",'Over $9k'))) %>% #bins for zero, plus four other price ranges based on quartiles
+  mutate(TIF_BIN =cut(TIF, breaks=c(-Inf, 0, 1, 4, 7, Inf), labels=c("Zero","Less than 1 year", "1-4 years", "4-7 years",'Over 7 years'))) %>% #bins for zero, plus four other price ranges based on quartiles
+  mutate(YOJ_BIN =cut(YOJ, breaks=c(-Inf, 0, 10, 15, Inf), labels=c("Zero","Less than 10 years", 'Between 10-15 years', 'Over 15 years'))) %>% #bins for zero, plus three other categories based on quartiles
+  dplyr::select(-c(CAR_AGE, HOME_VAL, HOMEKIDS, KIDSDRIV, OLDCLAIM, TIF, YOJ)) #drop the binned features
 
+mlr_crash2 <- subset(filter(insurance_fix2,TARGET_FLAG==1),select = -c(TARGET_FLAG))
+mlr_crash_fix_na2 <- mlr_crash2
+AGE_MEDIAN <- median(filter(mlr_crash_fix_na2,AGE > 0)$AGE)
+INCOME_MEDIAN <- median(filter(mlr_crash_fix_na2,INCOME > 0)$INCOME)
+YOJ_MEDIAN <- median(filter(mlr_crash_fix_na2,YOJ > 0)$YOJ)
+HOME_VAL_MEDIAN <- median(filter(mlr_crash_fix_na2,HOME_VAL > 0)$HOME_VAL)
+CAR_AGE_MEDIAN <- median(filter(mlr_crash_fix_na2,CAR_AGE > 0)$CAR_AGE)
 
+mlr_crash_fix_na2 <- mlr_crash_fix_na2 %>% dplyr::mutate(AGE = replace_na(AGE,AGE_MEDIAN),
+                             INCOME = replace_na(INCOME,INCOME_MEDIAN),
+                             YOJ = replace_na(YOJ,YOJ_MEDIAN),
+                             HOME_VAL = replace_na(HOME_VAL,HOME_VAL_MEDIAN),
+                             CAR_AGE = replace_na(CAR_AGE,CAR_AGE_MEDIAN))
+mlr_crash_transf2 <- mlr_crash_fix_na2
+mlr_crash_transf2$AGE <- log(mlr_crash_transf2$AGE)
+mlr_crash_transf2$BLUEBOOK <- log(mlr_crash_transf2$BLUEBOOK)
+mlr_crash_transf2$CAR_AGE <- log(mlr_crash_transf2$CAR_AGE + 1)
+mlr_crash_transf2$HOME_VAL <- log(mlr_crash_transf2$HOME_VAL + 1)
+mlr_crash_transf2$INCOME <- log(mlr_crash_transf2$INCOME + 1)
+mlr_crash_transf2$OLDCLAIM <- log(mlr_crash_transf2$OLDCLAIM + 1)
+mlr_crash_transf2$TRAVTIME <- log(mlr_crash_transf2$TRAVTIME)
+
+```
+
+```{r,predict}
+predicted_amt <- predict(model_log, insurance_bins2)
+predicted_amt2 = predicted_amt
+predicted_amt2[] = 0
+
+predicted_flag = predict(binned_lm, insurance_bins2, type = "response")
+predicted_flag_bin = ifelse(predicted_flag > 0.5, 1, 0)
+
+for (i in 1:length(predicted_amt)) {
+  if(predicted_flag_bin[i] == 0 | is.na(predicted_flag_bin[i])) {
+    predicted_amt2[i] = 0
+  } else {
+    predicted_amt2[i] = predicted_amt[i]
+  }
+  
+}
+```
+
+```{r,predictions}
+table(predicted_flag_bin)
+table(predicted_amt2)
+```
+
+# Code Appendix
+The code chunks below shows the R code called above throughout the analysis. They are being reproduced in the appendix for review and feedback.
+
+```{r appendix, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, eval=FALSE)
+```
+
+```{r data}
+```
+
+```{r, before-fix}
+```
+
+```{r,head}
+```
+
+```{r, numeric-vars}
+
+```
+
+```{r, categorical-vars}
+```
+
+```{r, after-fix}
+
+```
+
+```{r, car-age}
+```
+
+```{r, levels}
+```
+
+```{r, fig.length =20, fig.width=10}
+```
+
+```{r, histograms}
+```
+
+```{r, log10-hist}
+```
+
+```{r,missing-val}
+```
+
+```{r, fig.width=10, fig.length=10}
+
+```
+
+```{r, missing-values}
+```
+
+```{r, corrplot}
+```
