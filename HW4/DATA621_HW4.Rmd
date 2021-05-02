@@ -650,7 +650,7 @@ summary(model_log)
 ```
 
 
-```{r-diagnostic}
+```{r, diagnostic}
 res0 <- resid(model_log)
 plot(density(res0))
 qqnorm(res0)
