@@ -56,7 +56,7 @@ insurance_test <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/ma
 ```
 
 
-## Overview
+# Overview
 
 
 In this homework assignment, you will explore, analyze and model a data set containing approximately 8000 records representing a customer at an auto insurance company. Each record has two response variables. The
@@ -65,14 +65,14 @@ first response variable, TARGET_FLAG, is a 1 or a 0. A “1” means that the pe
 Your objective is to build multiple linear regression and binary logistic regression models on the training data to predict the probability that a person will crash their car and also the amount of money it will cost if the person does crash their car. You can only use the variables given to you (or variables that you derive from the variables provided). Below is a short description of the variables of interest in the data set:
 
 
-#### Response Variables:
+## Response Variables:
 
 |VARIABLE NAME|DEFINITION|THEORETICAL EFFECT|
 |-|-|--|
 |TARGET_FLAG|Was Car in a crash? 1=YES 0=NO|None|
 |TARGET_AMT|If car was in a crash, what was the cost|None|
 
-#### Explanatory Variables:
+## Explanatory Variables:
 
 |VARIABLE NAME|DEFINITION|THEORETICAL EFFECT|
 |-|-|--|
@@ -102,7 +102,7 @@ Your objective is to build multiple linear regression and binary logistic regres
 
 
 
-## Data Exploration
+# Data Exploration
 
 ```{r, before-fix}
 glimpse(insurance)
@@ -169,7 +169,7 @@ insurance_fix$CAR_AGE[insurance_fix$CAR_AGE <1] <- 1
 ```
 
 
-### Categorical variables
+## Categorical variables
 
 ```{r, levels}
 cat_cols = c()
@@ -204,7 +204,7 @@ ggplot(ins_factm, aes(x = value)) +
 
 
 
-### Numeric Variables
+## Numeric Variables
 
 Below 2 graphs shows the distribution of numeric variables. The red graphs are on normal scale and the green ones are on log10 scale. Many numeric variables feature the value of zero as a mode.
 
@@ -220,7 +220,7 @@ plot_histogram(insurance_fix, geom_histogram_args = list("fill" = "tomato4"))
 plot_histogram(insurance_fix, scale_x = "log10", geom_histogram_args = list("fill" = "springgreen4"))
 ```
 
-### Missing Values
+## Missing Values
 
 
 Here are columns having missing values coded as NA:
@@ -250,7 +250,7 @@ vis_dat(insurance_fix %>% dplyr:: select(YOJ, INCOME, HOME_VAL, CAR_AGE))
 
 Four variables have missing values, however there doesn't appear to be a pattern and it's safe to assume they're missing at random.
 
-### Correlation
+## Correlation
 For the purposes of seeing correlation between variables, we're going to replace NA values with the median.
 ```{r, corrplot}
 
@@ -280,10 +280,10 @@ It's clear there are some positive correlations between the following variables:
 * **Claim Frequence** & **MVR_PTS**:0.39    
 
 
-## Data Preparation
+# Data Preparation
 
 
-### Removing TARGET_FLAG
+## Removing TARGET_FLAG
 Our multiple linear regression model will be predicting the amount of money someone receives if they crash, so we will be removing the variable *TARGET_FLAG*
 
 
@@ -292,7 +292,7 @@ mlr_crash <- subset(filter(insurance_fix,TARGET_FLAG==1),select = -c(TARGET_FLAG
 
 ```
 
-### Handling Missing Data - Multiple Linear Regression
+## Handling Missing Data - Multiple Linear Regression
 
 For the multiple linear regression, we're going to assume that the NULL values will take the median value for the variable.
 ```{r mlr-fix-nulls}
@@ -311,7 +311,7 @@ mlr_crash_fix_na <- mlr_crash_fix_na %>% dplyr::mutate(AGE = replace_na(AGE,AGE_
                              CAR_AGE = replace_na(CAR_AGE,CAR_AGE_MEDIAN))
 ```
 
-### Transforming Variables - Multiple Linear Regression
+## Transforming Variables - Multiple Linear Regression
 There some variables that are not normally distributed so we're going to try using a log transformation later to see if that creates a better model.  For a few variables with values, 0, we added 1 to avoid negative infinity when taking the log of those variables.  This will not alter our modeling results significantly.
 
 
@@ -327,7 +327,7 @@ mlr_crash_transf$TRAVTIME <- log(mlr_crash_transf$TRAVTIME)
 
 ```
 
-### Zeroes in Home Value
+## Zeroes in Home Value
 
 It seems from the histogram above, that the mode of the variable HOME_VAL is 0. Given that, the distribution seems normal if we remove 0s and that the difference between 0 and the number that appears next on the axis is significant, we are assuming that 0 indicates missing values for HOME_VAL. Therefore, we will convert 0s to NAs in HOME_VAL prior to imputing missing values for Binary Logistic Regression Model 3 below.
 
@@ -336,7 +336,7 @@ insurance_fix2 <- insurance_fix
 insurance_fix2$HOME_VAL <-ifelse(insurance_fix2$HOME_VAL == 0, NA, insurance_fix2$HOME_VAL)
 ```
 
-### Addressing Zeroes using Binning
+## Addressing Zeroes using Binning
 
 The histograms for several variables indicate that there many with an overrepresentation of 'zero' values. Some of the worst offenders include CAR_AGE, HOME_VAL, HOMEKIDS, KIDSDRIV, OLDCLAIM, TIF, and YOJ.  INCOME also has many 'zero' or very low values, and also similar to CAR_AGE and HOME_VAL because, omitting zero, the rest of the distributions appear to be skewed, approximately normal distributions. To avoid problems with interpretation, the 4th model will consider these continuous variables as categorical variables defined as a number range.
 
@@ -357,7 +357,7 @@ head(insurance_bins)
 
 ## Build Models
 
-### Model1
+## Model1
 
 The first model to consider includes all given variables and does not impute any values.
 
@@ -421,7 +421,7 @@ get_roc(insurance_fix, insurance_logistic_model)
 
 ```
 
-### Model2
+## Model2
 
 The second model imputes values using the 'mice' library using classification and regression trees. We will use glm.mids() that applies glm() to a multiply imputed data set.
 
@@ -445,7 +445,7 @@ get_roc(insurance_fix, imputed_lm$analyses[[1]])
 
 ```
 
-### Model 3
+## Model 3
 
 Now we will replicate the model above to see if our assumption about treating 0s in HOME_VAL as missing data, yields a better model fit. 
 
@@ -459,7 +459,7 @@ get_roc(insurance_fix2, imputed_lm2$analyses[[1]])
 
 ```
 
-### Model 4
+## Model 4
 
 ```{r, binned-model}
 
@@ -479,7 +479,7 @@ get_cv_performance(insurance_bins, binned_lm)
 get_roc(insurance_bins, binned_lm)
 ```
 
-### Model 5
+## Model 5
 
 The next model provides a combination of imputation and binning.
 
@@ -501,7 +501,7 @@ get_roc(insurance_bins, binned_imputed_lm$analyses[[1]])
 
 ```
 
-### Multiple Linear Regression
+## Multiple Linear Regression
 
 ### Model 1
 
@@ -647,9 +647,9 @@ summary(model_log)
 ```
 
 
-## Model Selection & Prediction
+# Select Models & Prediction
 
-### Binary Logistic Regression
+## Binary Logistic Regression
 
 Based on the peformance diagnostics, model 4 or our binned model performs the best. AIC is 5816 and here are the other performance diagnostics:
 
@@ -658,11 +658,11 @@ Based on the peformance diagnostics, model 4 or our binned model performs the be
 get_cv_performance(insurance_bins, binned_lm)
 get_roc(insurance_bins, binned_lm)
 ```
-### Multiple Linear Regression
+## Multiple Linear Regression
 
 We will look at the diagnostic plot for the two models that had the highest adjusted r^2. Particularly model 1(with all variables minus TARGET_FLAG) and model 7 (log of response variable and a combination of predictors).
 
-#### Model 1
+### Model 1
 
 Model 1 had an adjusted r^2 of 0.02145 and is significant. Here is the diagnostic plot for model 1
 
@@ -680,7 +680,7 @@ ggplot(data = mlr, aes(x = .fitted, y = .resid)) +
 
 The density plot seems skewed and the qq plot deviates quite a bit.
 
-#### Model 7
+### Model 7
 
 Model 7 had an adjusted r^2 of 0.02158 and is significant
 
@@ -697,7 +697,7 @@ ggplot(data = model_log, aes(x = .fitted, y = .resid)) +
 ```
 The density and qqplot for model 7 seem somewhat normally distributed. The residual plot indicates homoscedasticity.
 
-#### Prediction
+### Prediction
 
 
 ```{r, test,echo=FALSE}
