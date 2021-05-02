@@ -627,30 +627,12 @@ coef(mlr_full,7)
 
 ### Multiple Regression Using Leaps
 
-Using the leaps package on one of the transformed datasets, we will try to find the best model.
-
-```{r,Linear}
-
-insurance_LINEAR <- regsubsets(TARGET_AMT ~ . ,  data = insurance_fix2,
-               nbest = 1,       # 1 best model for each number of predictors
-               nvmax = NULL,    # NULL for no limit on number of variables
-               force.in = NULL, force.out = NULL,
-               method = "exhaustive")
-insurance_LINEAR
+For this model, we will use the log transformation of the response variable as part of the model. 
+```{r}
+glm_model_cp_log <- lm(log(TARGET_AMT) ~ MSTATUS + SEX + BLUEBOOK + CLM_FREQ + MVR_PTS+EDUCATION, data = mlr_crash_transf)
+summary(glm_model_cp_log)
 ```
 
-
-
-```{r,adj-r2}
-which.max(summary.out$adjr2)
-
-summary.out$which[12,]
-```
-
-```{r,best-model}
-best.model <- lm(TARGET_AMT~MSTATUS+CAR_TYPE+OLDCLAIM+TARGET_FLAG+PARENT1+BLUEBOOK+YOJ+HOME_VAL+REVOKED, data =insurance_fix2 )
-summary(best.model)
-```
 ## Model Selection
 
 
