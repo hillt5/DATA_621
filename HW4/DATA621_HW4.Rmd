@@ -627,11 +627,23 @@ coef(mlr_full,7)
 
 ### Multiple Regression Using Leaps
 
-For this model, we will use the log transformation of the response variable as part of the model. 
-```{r}
-glm_model_cp_log <- lm(log(TARGET_AMT) ~ MSTATUS + SEX + BLUEBOOK + CLM_FREQ + MVR_PTS+EDUCATION, data = mlr_crash_transf)
-summary(glm_model_cp_log)
+For this model, we will use the log transformation of the response variable. We will also use the predictors that seems to have the most significant relationship for the model.
+```{r, model-log}
+model_log <- lm(log(TARGET_AMT) ~ MSTATUS + SEX + BLUEBOOK + CLM_FREQ + MVR_PTS+EDUCATION, data = mlr_crash_transf)
+summary(model_log)
 ```
+
+```{r-diagnostic}
+res0 <- resid(model_log)
+plot(density(res0))
+qqnorm(res0)
+qqline(res0)
+ggplot(data = model_log, aes(x = .fitted, y = .resid)) +
+  geom_jitter() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  xlab("Fitted values") +
+  ylab("Residuals")
+  ```
 
 ## Model Selection
 
