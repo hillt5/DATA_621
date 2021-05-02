@@ -1,3 +1,5 @@
+
+
 ---
 title: "Data 621 - HW4"
 author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
@@ -517,13 +519,18 @@ mlr<- lm(TARGET_AMT ~ . ,data=mlr_crash)
 summary(mlr)
 
 ```
+
+
 Using our log transformation on certain variables, the results are slightly worse. 
+
 ```{r multiple-linear-regression-log-data-with-fixed-nas}
-mlr<- lm(TARGET_AMT ~ . ,data=mlr_crash_transf))
+mlr<- lm(TARGET_AMT ~ . ,data=mlr_crash_transf)
 summary(mlr)
 ```
 
+
 Now let's use backwards elimination to remove some of variables that are not significant.
+
 ```{r multiple-linear-regression-backward-elim-1}
 mlr1 <- lm(TARGET_AMT ~ . ,data=mlr_crash_transf)
 #summary(mlr1)
@@ -572,6 +579,7 @@ summary(mlr22)
 ```
 
 Now let's use forward addition to add of variables one at a time.
+
 ```{r multiple-linear-regression-backward-elim}
 mlr_fwd <- lm(TARGET_AMT ~ BLUEBOOK + MVR_PTS + SEX ,data= mlr_crash_transf)
 #summary(mlr_fwd)
@@ -589,7 +597,9 @@ mlr_fwd <- lm(TARGET_AMT ~ BLUEBOOK + MVR_PTS + SEX + MSTATUS + HOME_VAL + REVOK
 summary(mlr_fwd)
 ```
 
+
 The function, *regsubsets()*, will go through iterations to find the best model using parameters = 1,2,3,4,... n. Here we see the model with 13 variables (represented by the red dot) had the lowest cp, which indicates the best model. The R^2 remains to be around 3.5% from about 13 variables and higher, which is extremely low.  
+
 
 ```{r multiple-linear-regression-2}
 mlr_full <- regsubsets(TARGET_AMT ~ . ,data=mlr_crash, nvmax=NULL)
@@ -602,7 +612,9 @@ plot(mlr_summary$rsq,xlab = "# Variables", ylab = "R^2")
 
 ```
 
+
 Here we will assume our model has 13 parameters and this gives us the following equation:
+
 ```{r mlr_coeff-2}
 coef(mlr_full,13)
 
@@ -610,6 +622,7 @@ coef(mlr_full,13)
 
 
 Using the regsubsets function and our data that includes log transformations, we see it suggests a model with 7 variables is best look at the cp value.
+
 ```{r multiple-linear-regression-3}
 mlr_full_transf <- regsubsets(TARGET_AMT ~ . ,data=mlr_crash_transf, nvmax=NULL)
 mlr_summary_transf <- summary(mlr_full_transf)
@@ -620,7 +633,9 @@ points(7,mlr_summary_transf$cp[7],pch=20,col="red")
 plot(mlr_summary_transf$rsq,xlab = "# Variables", ylab = "R^2")
 ```
 
+
 Using the transformed variables, we will choose the model that has 7 parameters since the R^2 value doesn't change by much as the number of parameters increases.  This gives us the following equation:  
+
 ```{r mlr_coeff-3}
 coef(mlr_full,7)
 ```
@@ -628,10 +643,12 @@ coef(mlr_full,7)
 ### Multiple Regression Using Leaps
 
 For this model, we will use the log transformation of the response variable. We will also use the predictors that seems to have the most significant relationship for the model.
+
 ```{r, model-log}
 model_log <- lm(log(TARGET_AMT) ~ MSTATUS + SEX + BLUEBOOK + CLM_FREQ + MVR_PTS+EDUCATION, data = mlr_crash_transf)
 summary(model_log)
 ```
+
 
 ```{r-diagnostic}
 res0 <- resid(model_log)
@@ -643,7 +660,8 @@ ggplot(data = model_log, aes(x = .fitted, y = .resid)) +
   geom_hline(yintercept = 0, linetype = "dashed") +
   xlab("Fitted values") +
   ylab("Residuals")
-  ```
+```
+
 
 ## Model Selection
 
