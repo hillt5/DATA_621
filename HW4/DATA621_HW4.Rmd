@@ -279,6 +279,7 @@ numer_data <- numer_data %>% dplyr::mutate(AGE = replace_na(AGE,AGE_MEDIAN),
 corrplot(cor(numer_data),type="upper")
 
 ```
+
 It's clear there are some positive correlations between the following variables:  
 * **Income** & **Home value**: 0.54  
 * **Income** & **Bluebook**: 0.42  
@@ -286,14 +287,21 @@ It's clear there are some positive correlations between the following variables:
 * **Claim Frequency** & **Old claims**: 0.50  
 * **Claim Frequence** & **MVR_PTS**:0.39    
 
+
 ## Data Prepation
+
+
 ### Removing TARGET_FLAG
 Our multiple linear regression model will be predicting the amount of money someone receives if they crash, so we will be removing the variable *TARGET_FLAG*
+
+
 ```{r mlr-remove-target-flag}
 mlr_crash <- subset(filter(insurance_fix,TARGET_FLAG==1),select = -c(TARGET_FLAG))
 
 ```
+
 ### Handling Missing Data - Multiple Linear Regression
+
 For the multiple linear regression, we're going to assume that the NULL values will take the median value for the variable.
 ```{r mlr-fix-nulls}
 mlr_crash_fix_na <- mlr_crash
@@ -313,6 +321,8 @@ mlr_crash_fix_na <- mlr_crash_fix_na %>% dplyr::mutate(AGE = replace_na(AGE,AGE_
 
 ### Transforming Variables - Multiple Linear Regression
 There some variables that are not normally distributed so we're going to try using a log transformation later to see if that creates a better model.  For a few variables with values, 0, we added 1 to avoid negative infinity when taking the log of those variables.  This will not alter our modeling results significantly.
+
+
 ```{r mlr-log-trans}
 mlr_crash_transf <- mlr_crash_fix_na
 mlr_crash_transf$AGE <- log(mlr_crash_transf$AGE)
@@ -333,11 +343,14 @@ It seems from the histogram above, that the mode of the variable HOME_VAL is 0. 
 insurance_fix2 <- insurance_fix 
 insurance_fix2$HOME_VAL <-ifelse(insurance_fix2$HOME_VAL == 0, NA, insurance_fix2$HOME_VAL)
 ```
+
 ## Build Models
 
-### Binary Logistic Regression
+### Model1
 
-#### Model 1
+The first model to consider includes all given variables and does not impute any values.
+
+
 ```{r, first-model}
 
 
@@ -347,7 +360,7 @@ summary(insurance_logistic_model)
 
 ```
 
-The first model to consider includes all given variables and does not impute any values.
+
 
 
 ```{r, performance-function}
@@ -397,11 +410,11 @@ get_roc(insurance_fix, insurance_logistic_model)
 
 ```
 
-#### Model 2
+### Model2
 
-The second model imputes values using the 'mice' library using classification and regression trees.
+The second model imputes values using the 'mice' library using classification and regression trees. We will use glm.mids() that applies glm() to a multiply imputed data set.
 
-```{r, imputed-model}
+```{r, imputed-model2}
 
 insurance_impute <- mice(insurance_fix, method = 'cart', m = 1)
 
@@ -424,6 +437,7 @@ get_roc(insurance_fix, imputed_lm$analyses[[1]])
 ### Model 3
 
 Now we will replicate the model above to see if our assumption about treating 0s in HOME_VAL as missing data, yields a better model fit. 
+
 ```{r, imputed-model}
 
 insurance_impute2 <- mice(insurance_fix2, method = 'cart', m = 1)
