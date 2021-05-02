@@ -280,7 +280,7 @@ It's clear there are some positive correlations between the following variables:
 * **Claim Frequence** & **MVR_PTS**:0.39    
 
 
-## Data Prepation
+## Data Preparation
 
 
 ### Removing TARGET_FLAG
@@ -574,7 +574,7 @@ mlr22 <- update(mlr21,TARGET_AMT~. - SEX)
 summary(mlr22)
 ```
 
-## Model 4: Forward Elimination
+### Model 4: Forward Elimination
 
 Now let's use forward addition to add of variables one at a time.
 
