@@ -454,6 +454,8 @@ Now we will replicate the model above to see if our assumption about treating 0s
 insurance_impute2 <- mice(insurance_fix2, method = 'cart', m = 1)
 imputed_lm2 <- glm.mids(data = insurance_impute2, formula = TARGET_FLAG ~.-TARGET_AMT, family = 'binomial')
 imputed_lm2
+get_cv_performance(insurance_fix2, imputed_lm2$analyses[[1]])
+get_roc(insurance_fix2, imputed_lm2$analyses[[1]])
 
 ```
 
@@ -576,7 +578,7 @@ summary(mlr22)
 
 Now let's use forward addition to add of variables one at a time.
 
-```{r multiple-linear-regression-backward-elim}
+```{r multiple-linear-regression-forward-elim}
 mlr_fwd <- lm(TARGET_AMT ~ BLUEBOOK + MVR_PTS + SEX ,data= mlr_crash_transf)
 summary(mlr_fwd)
 
@@ -643,12 +645,6 @@ For this model, we used the log transformation of the response variable and a co
 model_log <- lm(log(TARGET_AMT) ~ MSTATUS+SEX+ BLUEBOOK + CLM_FREQ + MVR_PTS+EDUCATION, data = mlr_crash_transf)
 summary(model_log)
 ```
-### Model 8
-
-```{r}
-summary(insurance_bins)
-```
-
 
 
 ## Model Selection & Prediction
@@ -842,4 +838,132 @@ knitr::opts_chunk$set(echo=TRUE, eval=FALSE)
 ```
 
 ```{r, corrplot}
+```
+
+```{r mlr-remove-target-flag}
+```
+
+```{r mlr-fix-nulls}
+```
+
+```{r mlr-log-trans}
+
+```
+
+```{r,insurance_fix2}
+```
+
+```{r, binned-data}
+```
+
+```{r, first-model}
+```
+
+```{r, performance-function}
+```
+
+```{r, roc-function}
+ 
+```
+
+```{r, logistic-model-performance}
+
+```
+
+```{r, imputed-model2}
+
+```
+
+
+```{r, imputed-model-performance}
+
+```
+
+```{r, imputed-model}
+
+```
+
+```{r, binned-model}
+
+
+```
+
+
+```{r, binned-model-performance}
+
+```
+
+```{r, binned-and-imputed-model}
+
+```
+
+```{r, binned-and-imputed-model-performance}
+
+```
+
+```{r multiple-linear-regression-all-data}
+
+```
+
+```{r multiple-linear-regression-log-data-with-fixed-nas}
+
+```
+
+
+
+```{r multiple-linear-regression-backward-elim-1}
+```
+
+```{r multiple-linear-regression-forward-elim}
+
+```
+
+
+
+```{r multiple-linear-regression-2}
+
+```
+
+```{r multiple-linear-regression-3}
+```
+
+ 
+
+```{r mlr_coeff-3}
+```
+
+```{r,model-6}
+```
+
+```{r, model-log}
+
+```
+
+```{r, binned-model-performance2}
+
+```
+
+```{r, diagnostic-model1}
+
+```
+
+
+
+```{r, diagnostic-model7}
+
+```
+
+
+
+```{r, test,echo=FALSE}
+
+
+```
+
+```{r,predict}
+
+```
+
+```{r,predictions}
+
 ```
