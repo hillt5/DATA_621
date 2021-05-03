@@ -51,7 +51,9 @@ set.seed(2012)
 
 
 ```{r data}
+# training data
 insurance <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW4/insurance_training_data.csv', stringsAsFactors =  FALSE)
+# test data
 insurance_test <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW4/insurance_training_data.csv')
 ```
 
@@ -191,7 +193,7 @@ Looking at categorical variables, most of the columns are binary.
 
 Below graphs shows the distribution of all categorical predictors.
 
-```{r, fig.length =20, fig.width=10}
+```{r, cat-bar, fig.length =20, fig.width=10}
 
 ins_fact <-  insurance_fix[cat_cols]
 ins_factm <- melt(ins_fact, measure.vars = cat_cols, variable.name = 'metric', value.name = 'value')
@@ -232,7 +234,7 @@ insurance_fix %>% summarise_all(funs(sum(is.na(.)))) %>% select_if(~any(.)>0)
 ```
 
 
-```{r, fig.width=10, fig.length=10}
+```{r, plot-miss, fig.width=10, fig.length=10}
 plot_missing(insurance_fix)
 ```
 
