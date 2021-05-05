@@ -22,6 +22,13 @@ knitr::opts_chunk$set(echo=FALSE, error=FALSE, warning=FALSE, message=FALSE, fig
 ```{r loadData, include=FALSE}
 # Libraries
 
+
+library(DataExplorer)
+library(visdat)
+library(dplyr)
+library(tidyr)
+library(MASS)
+
         
 set.seed(621)
 ```
@@ -29,9 +36,9 @@ set.seed(621)
 
 ```{r data}
 # training data
-wine_train <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW5/wine-training-data.csv')
+wine_train <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW5/wine-training-data.csv') %>% select(-'ï..INDEX')
 # test data
-wine_test <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW5/wine-evaluation-data.csv')
+wine_test <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW5/wine-evaluation-data.csv') %>% select(-'IN')
 ```
 
 
@@ -66,12 +73,98 @@ Below is the description of the variables of interest in the data set.
 |pH|pH of wine||
 
 
+## Numeric Variables
+
+
+```{r, histograms}
+plot_histogram(wine_train, geom_histogram_args = list("fill" = "tomato4"))
+
+```
+
+
+
+```{r, distinct-values}
+tibble(wine_train %>% summarize_all(n_distinct))
+```
+
+
+All variables in this dataset are initially interpretable as numeric data. There are several variables, including AcidIndex, LabelAppeal, and STARS that have few distinct values and may be treated as factors in the future. The target variable, number of cases, also only spans values 0 - 8.  
+
+
+### Missing Values
+
+
+```{r, missing-values}
+
+
+colSums(is.na(wine_train))
+
+
+vis_dat(wine_train  %>% dplyr:: select(pH, ResidualSugar, Chlorides, Alcohol, FreeSulfurDioxide , TotalSulfurDioxide, Sulphates, STARS))
+
+
+```
+
+The feature with the most misisng variables is STARS, which is a rating between 1-4. It's plausible that the misising values in this case are wine brands that are unrated by STARS.  These missing values can potentially be recoded as 'zero' to avoid dropping a substantial proportion of data.   There also does not appear to be any apparent pattern in misisng data.  
+
+
+
+````{r, pct-missing-values}
+
+plot_missing(wine_train)
+
+
+100*round((wine_train %>% drop_na() %>% nrow())/nrow(wine_train), 3) ##Number of observations with complete data for each variable
+
+```
+
+The remaining missing values comprise less than ten percent of observations separately. Taken together, just over 50% of observations have complete data available.  
+
 
 # Data Preparation
 
+```{r, STARS-missing-values}
 
+
+wine_train <- wine_train %>%
+  mutate(STARS = replace_na(STARS, 0))  ## Recode missing STARS ratings as '0'
+
+
+
+```
+
+
+```{r, impute-median}
+
+
+wine_impute <- mlr:: impute(wine_train, classes = list(numeric = mlr::imputeMedian()))
+
+
+```
 # Build Models
 
+### Linear Model
+```{r, first-model}
+
+summary(lm(wine_train, formula = TARGET ~.))
+
+```
+
+### Poisson Regression for Zero-inflated Count as Response Variable
+
+```{r, poisson-model}
+
+summary(glm(wine_train, formula = TARGET ~., family = poisson ))
+
+
+```
+
+
+```{r, negative-binom-model}
+
+summary(glm.nb(wine_train, formula = TARGET ~. ))
+
+```
 
 # Select Models
 
