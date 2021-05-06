@@ -3,15 +3,15 @@ title: "Data 621 - HW5"
 author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
 date: "5/23/2021"
 output:
-  pdf_document:
-    toc: TRUE
-    toc_depth: 2 
   html_document:
     highlight: pygments
     number_sections: no
     theme: flatly
     toc: yes
     toc_float: yes
+  pdf_document:
+    toc: TRUE
+    toc_depth: 2 
 ---
 
 ```{r setup, include=FALSE}
@@ -28,6 +28,7 @@ library(visdat)
 library(dplyr)
 library(tidyr)
 library(MASS)
+library(psych)
 
         
 set.seed(621)
@@ -36,10 +37,12 @@ set.seed(621)
 
 ```{r data}
 # training data
-wine_train <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW5/wine-training-data.csv') 
+wine_train <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW5/wine-training-data.csv') %>% 
+  dplyr::select(-1)
 
 # test data
-wine_test <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW5/wine-evaluation-data.csv') 
+wine_test <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW5/wine-evaluation-data.csv') %>% 
+  dplyr::select(-1)
 ```
 
 
@@ -74,14 +77,23 @@ Below is the description of the variables of interest in the data set.
 |pH|pH of wine||
 
 
-## Numeric Variables
+## Statistics
 
+All of the data are numeric and here is the statistics summary of all the predictors.
 
-```{r, histograms}
-plot_histogram(wine_train, geom_histogram_args = list("fill" = "tomato4"))
-
+```{r, describe}
+wine_train %>% dplyr::select(-1) %>% describe()
 ```
 
+## Numeric Variables
+
+Seeing the distribution plots below of all the predictor variables, it is evident that variables Alcohol, Chlorides, CitricAcid, Density, FixedAcidity, FreeSulphurDioxide, pH, ResidualSugar, Sulphates, TotalSulphurDioxide and VolatileAcidity appear to be symmetrical but non Gaussian since there is a strong spike near the median and not smooth near the tails on either side. 
+
+LabelAppeal distribution appears mostly normal while for AcidIndex and STARS seems to follow Poisson distribution.
+
+```{r, histograms}
+plot_histogram(wine_train[-1], geom_histogram_args = list("fill" = "tomato4"))
+```
 
 
 ```{r, distinct-values}
@@ -92,7 +104,29 @@ tibble(wine_train %>% summarize_all(n_distinct))
 All variables in this dataset are initially interpretable as numeric data. There are several variables, including AcidIndex, LabelAppeal, and STARS that have few distinct values and may be treated as factors in the future. The target variable, number of cases, also only spans values 0 - 8.  
 
 
-### Missing Values
+## Correlations
+
+The `corrplot` below shows the correlation between predictor variables by ignoring the missing entries.
+
+```{r, corrplot}
+forcorr <- wine_train[complete.cases(wine_train),-1]
+corrplot::corrplot(cor(forcorr), type = 'lower')
+```
+
+From the above `corrplot`, it is apparent that 
+
+* `AcidIndex` and `FixedAcidity` are positively correlated. 
+* `STARS` and `LabelAppeal` are positively correlated. 
+* `STARS` and `AcidIndex` are negatively correlated.
+
+
+
+
+
+
+
+
+## Missing Values
 
 
 ```{r, missing-values}
@@ -120,6 +154,15 @@ plot_missing(wine_train)
 ```
 
 The remaining missing values comprise less than ten percent of observations separately. Taken together, just over 50% of observations have complete data available.  
+
+
+
+
+
+
+
+
+
 
 
 # Data Preparation
