@@ -36,9 +36,10 @@ set.seed(621)
 
 ```{r data}
 # training data
-wine_train <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW5/wine-training-data.csv') %>% select(-'ï..INDEX')
+wine_train <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW5/wine-training-data.csv') 
+
 # test data
-wine_test <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW5/wine-evaluation-data.csv') %>% select(-'IN')
+wine_test <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW5/wine-evaluation-data.csv') 
 ```
 
 
