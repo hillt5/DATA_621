@@ -187,18 +187,19 @@ wine_impute <- mlr:: impute(wine_train, classes = list(numeric = mlr::imputeMedi
 ```
 # Build Models
 
-### Linear Model
+
+### Model 1: Linear Model
 ```{r, first-model}
 
 summary(lm(wine_train, formula = TARGET ~.))
 
 ```
 
-### Poisson Regression for Zero-inflated Count as Response Variable
+### Model 2: Poisson Regression for Zero-inflated Count as Response Variable
 
 ```{r, poisson-model}
-
-summary(glm(wine_train, formula = TARGET ~., family = poisson ))
+poisson <- glm(wine_train, formula = TARGET ~., family = poisson)
+summary(poisson)
 
 ```
 
