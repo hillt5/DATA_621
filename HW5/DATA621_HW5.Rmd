@@ -29,6 +29,7 @@ library(dplyr)
 library(tidyr)
 library(MASS)
 library(psych)
+library(AER)
 
         
 set.seed(621)
@@ -140,7 +141,7 @@ vis_dat(wine_train  %>% dplyr:: select(pH, ResidualSugar, Chlorides, Alcohol, Fr
 
 ```
 
-The feature with the most misisng variables is STARS, which is a rating between 1-4. It's plausible that the misising values in this case are wine brands that are unrated by STARS.  These missing values can potentially be recoded as 'zero' to avoid dropping a substantial proportion of data.   There also does not appear to be any apparent pattern in misisng data.  
+The feature with the most misisng variables is STARS, which is a rating between 1-4. It's plausible that the missing values in this case are wine brands that are unrated by STARS.  These missing values can potentially be recoded as 'zero' to avoid dropping a substantial proportion of data.   There also does not appear to be any apparent pattern in misisng data.  
 
 
 
@@ -167,16 +168,15 @@ The remaining missing values comprise less than ten percent of observations sepa
 
 # Data Preparation
 
+We will recode missing values in the predictor STARS as 0.
+
 ```{r, STARS-missing-values}
-
-
 wine_train <- wine_train %>%
   mutate(STARS = replace_na(STARS, 0))  ## Recode missing STARS ratings as '0'
 
-
-
 ```
 
+However, since our ratings range from 1 to 4, we will also impute this variable with the median. 
 
 ```{r, impute-median}
 
@@ -200,9 +200,14 @@ summary(lm(wine_train, formula = TARGET ~.))
 
 summary(glm(wine_train, formula = TARGET ~., family = poisson ))
 
-
 ```
 
+We see that the residual deviance is 9962 on 8660 degrees of freedom. Ideally the ratio of deviance to df should be 1. Otherwise there is overdispersion in the model.
+
+```{r,overdisp}
+dispersiontest(poisson)
+```
+There is no indication of overdispersion in our data.
 
 ```{r, negative-binom-model}
 
