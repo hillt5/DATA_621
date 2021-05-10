@@ -156,22 +156,14 @@ plot_missing(wine_train)
 
 The remaining missing values comprise less than ten percent of observations separately. Taken together, just over 50% of observations have complete data available.  
 
-
-
-
-
-
-
-
-
-
-
 # Data Preparation
+
+## Missing Values
 
 We will recode missing values in the predictor STARS as 0.
 
 ```{r, STARS-missing-values}
-wine_train <- wine_train %>%
+wine_train1 <- wine_train %>%
   mutate(STARS = replace_na(STARS, 0))  ## Recode missing STARS ratings as '0'
 
 ```
@@ -180,22 +172,77 @@ However, since our ratings range from 1 to 4, we will also impute this variable 
 
 ```{r, impute-median}
 
+#wine_impute <- mlr:: impute(wine_train, classes = list(numeric = mlr::imputeMedian()))
+wine_impute <- na.mean(wine_train, option = "median")
+```
 
-wine_impute <- mlr:: impute(wine_train, classes = list(numeric = mlr::imputeMedian()))
+However, imputing with measures of central tendency is that they tend to reduce the variance in the dataset and shrinks standard errors Therefore, our third method of dealing with missing values would be multiple imputation. We will use the MICE package in R to impute via the random forest method.
 
-
+```{r, multiple-imputation}
+imp <- mice(wine_train, method = "rf", m = 1)
+# Store data
+data_imp <- complete(imp)
 ```
 # Build Models
 
 
-### Model 1: Linear Model
+## Multiple Linear Regression : Model 1
+
+We will first run linear regression with all predictor variables in our dataset.
+
 ```{r, first-model}
 
 summary(lm(wine_train, formula = TARGET ~.))
 
 ```
+The adjusted r^2 is 0.4438 and is significant.
 
-### Model 2: Poisson Regression for Zero-inflated Count as Response Variable
+## Multiple Linear Regression : Model 2
+
+We will now run linear regression with all predictor variables on our dataset with missing values in STARS recoded as 0.
+
+```{r, second-model}
+model2<- lm(wine_train1, formula = TARGET ~.)
+summary(model2)
+
+```
+
+The adjusted r^2 has gone up to 0.5186 and this is significant. 
+
+## Multiple Linear Regression : Model 3
+
+We will run the linear regression model on our dataset with the imputed median.
+
+```{r,third-model}
+
+summary(lm(wine_impute, formula = TARGET ~.))
+
+```
+Seems like this decreased out adjusted r^2 to 0.2871.
+
+## Multiple Linear Regression : Model 4
+
+Now we will run the linear regression model on our dataset with the data from MICE.
+
+```{r,fourth-model}
+summary(lm(data_imp, formula = TARGET ~.))
+```
+Looks like this has brought down our adjusted r^2 to 0.4443. Therefore, it seems like in this case the best model fit was achieved with the dataset where we recoded the missing values as 0.
+
+Let's check the model fit for this model with diagnostic plots:
+
+```{r, diagnostic-model2}
+library(ggplot2)
+res0 <- resid(model2)
+plot(density(res0))
+qqnorm(res0)
+qqline(res0)
+```
+The density and qq plot for this model indicates that the residuals are normally distributed.
+
+While this model maybe an adequate fit, we are going to develop Poisson Regression models next to see if we can get a better fit.
+
+## Poisson Regression for Zero-inflated Count as Response Variable : Model 1
 
 ```{r, poisson-model}
 poisson <- glm(wine_train, formula = TARGET ~., family = poisson)
