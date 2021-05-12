@@ -173,13 +173,13 @@ However, since our ratings range from 1 to 4, we will also impute this variable 
 ```{r, impute-median}
 
 #wine_impute <- mlr:: impute(wine_train, classes = list(numeric = mlr::imputeMedian()))
-wine_impute <- na.mean(wine_train, option = "median")
+wine_impute <- imputeTS ::na_mean(wine_train, option = "median")
 ```
 
 However, imputing with measures of central tendency is that they tend to reduce the variance in the dataset and shrinks standard errors Therefore, our third method of dealing with missing values would be multiple imputation. We will use the MICE package in R to impute via the random forest method.
 
 ```{r, multiple-imputation}
-imp <- mice(wine_train, method = "rf", m = 1)
+imp <- mice:: mice(wine_train, method = "rf", m = 1)
 # Store data
 data_imp <- complete(imp)
 ```
