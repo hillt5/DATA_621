@@ -30,8 +30,10 @@ library(tidyr)
 library(MASS)
 library(psych)
 library(AER)
+library(mlr)
+library(mice)
+library(imputeTS)
 
-        
 set.seed(621)
 ```
 
@@ -173,13 +175,13 @@ However, since our ratings range from 1 to 4, we will also impute this variable 
 ```{r, impute-median}
 
 #wine_impute <- mlr:: impute(wine_train, classes = list(numeric = mlr::imputeMedian()))
-wine_impute <- na.mean(wine_train, option = "median")
+wine_impute <- imputeTS ::na_mean(wine_train, option = "median")
 ```
 
 However, imputing with measures of central tendency is that they tend to reduce the variance in the dataset and shrinks standard errors Therefore, our third method of dealing with missing values would be multiple imputation. We will use the MICE package in R to impute via the random forest method.
 
 ```{r, multiple-imputation}
-imp <- mice(wine_train, method = "rf", m = 1)
+imp <- mice:: mice(wine_train, method = "rf", m = 1)
 # Store data
 data_imp <- complete(imp)
 ```
@@ -215,7 +217,7 @@ We will run the linear regression model on our dataset with the imputed median.
 
 ```{r,third-model}
 
-summary(lm(wine_impute, formula = TARGET ~.))
+summary(lm(wine_impute, formula = TARGET ~ .))
 
 ```
 Seems like this decreased out adjusted r^2 to 0.2871.
@@ -227,13 +229,24 @@ Now we will run the linear regression model on our dataset with the data from MI
 ```{r,fourth-model}
 summary(lm(data_imp, formula = TARGET ~.))
 ```
-Looks like this has brought down our adjusted r^2 to 0.4443. Therefore, it seems like in this case the best model fit was achieved with the dataset where we recoded the missing values as 0.
+Looks like this has brought down our adjusted r^2 to 0.4443. Therefore, it seems like in this case the best model fit was achieved with the dataset where we recoded the missing values as 0 and used all the variables.
+
+Before moving on let's try removing some of the variables to see if we can get a simpler model.  
+
+## Multiple Linear Regression : Model 5
+We removed some of the parameters that aren't statistically significant from model2 which so far has the highest adjusted r^2 value.  We also chose to remove some variables that were statistically significant (Chlorides,TotalSulfurDioxide,FreeSulfurDioxide and VolatileAcidity) but the coefficients of the model were so small they had little impact.  In favor of a simpler model with fewer parameters, these were removed.
+```{r,fifth-model}
+model5 <- lm(wine_train1, formula = TARGET ~ LabelAppeal + AcidIndex + STARS)
+summary(model5)
+
+```
+The adjusted r^2 to value is slightly higher at 0.5235
 
 Let's check the model fit for this model with diagnostic plots:
 
-```{r, diagnostic-model2}
+```{r, diagnostic-model5}
 library(ggplot2)
-res0 <- resid(model2)
+res0 <- resid(model5)
 plot(density(res0))
 qqnorm(res0)
 qqline(res0)
@@ -242,29 +255,91 @@ The density and qq plot for this model indicates that the residuals are normally
 
 While this model maybe an adequate fit, we are going to develop Poisson Regression models next to see if we can get a better fit.
 
-## Poisson Regression for Zero-inflated Count as Response Variable : Model 1
-
-```{r, poisson-model}
-poisson <- glm(wine_train, formula = TARGET ~., family = poisson)
-summary(poisson)
+## Poisson Regression STARS = 1 Where Missing: Model 1
+First let us use our dataset where we recoded missing values in the predictor STARS as 0.
+```{r, poisson-model1}
+poisson1 <- glm(wine_train1, formula = TARGET ~., family = poisson)
+summary(poisson1)
 
 ```
 
 We see that the residual deviance is 9962 on 8660 degrees of freedom. Ideally the ratio of deviance to df should be 1. Otherwise there is overdispersion in the model.
 
-```{r,overdisp}
-dispersiontest(poisson)
+
+```{r,overdisp1}
+dispersiontest(poisson1)
 ```
 There is no indication of overdispersion in our data.
 
+## Poisson Regression STARS = 1 Where Missing: Model 2
+Our next poisson model, we will use the limited variables we found to be relevant in our linear model.  Again we are using the dataset where we recoded missing values in the predictor STARS as 0.
+```{r, poisson-model-2}
+poisson2 <- glm(wine_train1, formula = TARGET ~ STARS + LabelAppeal + AcidIndex, family = poisson)
+summary(poisson2)
+
+```
+We see that the residual deviance is 22861 on 12794 degrees of freedom. Ideally the ratio of deviance to df should be 1. Otherwise there is overdispersion in the model.
+
+```{r,overdisp2}
+dispersiontest(poisson2)
+```
+There is no indication of overdispersion in our data.
+
+
+## Negative Binomial Model
 ```{r, negative-binom-model}
 
-summary(glm.nb(wine_train, formula = TARGET ~. ))
+summary(glm.nb(wine_train1, formula = TARGET ~. ))
 
 ```
 
 # Select Models
 
+### Best Linear Model
+The best linear model was chosen based on adjusted R^2 value, ~52.4%, and the least number of variables.  It accounts for the most variance in our data.  The STARS value has the highest impact on the score of a wine.  We will compare this model to our poisson and negative binomial models below.  
+```{r, best-model}
+coefficients(model5)
+```
+
+### Comparing Models
+We're going to use AIC and MSE values to choose the best model
+```{r aic-mse-comparison}
+library(dvmisc)
+library(kableExtra)
+
+lm5 <- c('Fewer variables and missing STARS variables recoded as 0',AIC(model5),mean(model5$residuals^2))
+p1 <- c('STARS = 0 where missing',poisson1$aic,get_mse(poisson1))
+p2 <- c('STARS = 0 where missing with fewer variables',poisson2$aic,get_mse(poisson2))
+nb1 <- c('',0,0)
+nb2 <- c('',0,0)
+
+results <- cbind(lm5,p1,p2,nb1,nb2)
+
+colnames(results) <- c('Linear Model #5', 'Poisson #1', 'Poisson #2','Negative Binomial #1', 'Negative Binomial #2')
+rownames(results) <- c('Description','AIC','MSE')
+
+results %>%
+  kable() %>%
+  kable_styling()
+
+```
+Here we see Poisson #1 is the best model because it has the lowest AIC and MSE.  
+
+### Prediction on the Test Data  
+Now we will use our poisson model to run our test data.  
+```{r, predict-test-data}
+wine_test1 <-  wine_test %>%
+  mutate(STARS = replace_na(STARS, 0)) 
+
+predictions <- predict(poisson1,wine_test1)
+predictions_rounded <- ceiling(predictions)
+table(predictions_rounded)
+```
+
+```{r, plotted-test-predictions}
+hist(predictions_rounded)
+
+```
 
 # Code Appendix
 
