@@ -40,7 +40,7 @@ set.seed(621)
 
 ```{r data}
 
-fires <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/Final%20Project/uci-forest-fires/forestfires.csv') 
+fires <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/Final%20Project/uci-forest-fires/forestfires.csv', stringsAsFactors = TRUE) 
 
 ```
 
@@ -133,17 +133,39 @@ From the above `corrplot`, it is apparent that
 
 ## Missing Values
 
-At first glance, there are no missing values in this dataset. However, to make sure the day and month data should be examined to see if the study period constitutes a specific interval of time.  
+At first glance, there are no missing values in this dataset. However, only days with information about fires are added to the original dataset.The original paper mentions that readings spanned between January 2000 to December 2003, which would be a span of 1460 days as opposed to the 517 observations in the dataset. Since forest fires tend to be seasonal during a dry season, there may be a relationship to the data available for each month.  
+
+```{r, months}
+
+
+fires %>% group_by(month) %>% summarize(n())
+
+
+
+```
+
+
+
+The most observations are available for the month of August by a large margin.  March, July and February are the next most common months. January, May, and November have 2, 2, and 1 fires reported.
+
+Looking at the August number, it's evident that multiple fires were happening per day during this time period.  This creates an interesting twist as multiple fires could strain firefighting resources and offers the prospect of considering a logistical or count as response variable if weather data were available for the missing dates.  It's also possible that the extra August observations there are duplicate entries as the observations were collected from two sources throughout the study.  
 
 
 # Data Preparation
 
 
-## Time Data
-
-
 ## Missing Values
+
+
+
 # Build Models
+
+```{r, }
+
+summary(lm(fires, formula = area ~.))
+
+
+```
 
 
 # Select Models
