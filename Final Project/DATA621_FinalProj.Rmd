@@ -65,10 +65,10 @@ Below is the description of the variables of interest in the data set.
 |Y|y-axis spatial coordinate within the Montesinho park map: 2 to 9|
 |month| month of the year: "jan" to "dec" |
 |day|day of the week: "mon" to "sun"|
-|FFMC|FFMC* index from the FWI system: 18.7 to 96.20|
-|DMC|DMC* index from the FWI system: 1.1 to 291.3 |
-|DC| DC* index from the FWI system: 7.9 to 860.6 |
-|ISI|ISI* index from the FWI system: 0.0 to 56.10|
+|FFMC*|Fine Fuel Moisture Code index from the FWI system: 18.7 to 96.20|
+|DMC*|Duff Moisture Code index from the FWI system: 1.1 to 291.3 |
+|DC*| Drought Code index from the FWI system: 7.9 to 860.6 |
+|ISI*|Iniital Spread Index from the FWI system: 0.0 to 56.10|
 |temp|temperature in Celsius degrees: 2.2 to 33.30|
 |RH|relative humidity in %: 15.0 to 100|
 |wind|wind speed in km/h: 0.40 to 9.40 |
@@ -76,8 +76,7 @@ Below is the description of the variables of interest in the data set.
 |area|the burned area of the forest (in ha): 0.00 to 1090.84 |  
 
 
-
-
+*The FWI, or Fire Weather Index system, is an estimator developed in Canada for assessing fire risk. It ranges 0-20 and considers weather and fire conditions withing a critical period prior at the start of the fire.  The FFMC is a composite of rain, humidity, temperature and wind, DMC is rain, humidity and temperature, DC is rain and temperature, and finally ISI is a fire behavior index. One element of FWI, the buildup index, was not included as this is an indicator of the bulk fuel on the ground and not ascertainable from meteorology.  
 
 
 Source : Cortez, Paulo & Morais, A.. (2007). A Data Mining Approach to Predict Forest Fires using Meteorological Data. 
@@ -94,21 +93,20 @@ fires %>%  describe()
 
 ## Numeric Variables
 
-Seeing the distribution plots below of all the predictor variables, it is evident that variables Alcohol, Chlorides, CitricAcid, Density, FixedAcidity, FreeSulphurDioxide, pH, ResidualSugar, Sulphates, TotalSulphurDioxide and VolatileAcidity appear to be symmetrical but non Gaussian since there is a strong spike near the median and not smooth near the tails on either side. 
-
-LabelAppeal distribution appears mostly normal while for AcidIndex and STARS seems to follow Poisson distribution.
+Exxcept for the day and month columns, all of these variables are numeric.  The original authors mention that area is likely to require log or some other transformation for best contribution to a model.  
 
 ```{r, histograms}
-plot_histogram(wine_train[-1], geom_histogram_args = list("fill" = "tomato4"))
+plot_histogram(fires, geom_histogram_args = list("fill" = "tomato4"))
 ```
 
 
 ```{r, distinct-values}
-tibble(wine_train %>% summarize_all(n_distinct))
+tibble(fires %>% summarize_all(n_distinct))
 ```
 
 
-All variables in this dataset are initially interpretable as numeric data. There are several variables, including AcidIndex, LabelAppeal, and STARS that have few distinct values and may be treated as factors in the future. The target variable, number of cases, also only spans values 0 - 8.  
+For distinct values, it appears that this region of Portugal does not have very routine rainfall.   
+
 
 
 ## Correlations
@@ -116,15 +114,15 @@ All variables in this dataset are initially interpretable as numeric data. There
 The `corrplot` below shows the correlation between predictor variables by ignoring the missing entries.
 
 ```{r, corrplot}
-forcorr <- wine_train[complete.cases(wine_train),-1]
-corrplot::corrplot(cor(forcorr), type = 'lower')
+fire_corr <- fires[-c(3,4)]
+corrplot::corrplot(cor(fire_corr), type = 'lower')
 ```
 
 From the above `corrplot`, it is apparent that 
 
-* `AcidIndex` and `FixedAcidity` are positively correlated. 
-* `STARS` and `LabelAppeal` are positively correlated. 
-* `STARS` and `AcidIndex` are negatively correlated.
+* `X` and `Y` are positively correlated, which is perhaps spurious or owing to the lack of distinct values for these variables.
+* `temp` is positively correlated with several of the indices, 
+* `temp` and `RH` are negatively correlated.
 
 
 
@@ -135,22 +133,14 @@ From the above `corrplot`, it is apparent that
 
 ## Missing Values
 
+At first glance, there are no missing values in this dataset. However, to make sure the day and month data should be examined to see if the study period constitutes a specific interval of time.  
 
-```{r, missing-values}
-
-
-colSums(is.na(wine_train))
-
-
-vis_dat(wine_train  %>% dplyr:: select(pH, ResidualSugar, Chlorides, Alcohol, FreeSulfurDioxide , TotalSulfurDioxide, Sulphates, STARS))
-
-
-```
-
-
-The remaining missing values comprise less than ten percent of observations separately. Taken together, just over 50% of observations have complete data available.  
 
 # Data Preparation
+
+
+## Time Data
+
 
 ## Missing Values
 # Build Models
