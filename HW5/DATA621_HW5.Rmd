@@ -184,6 +184,13 @@ However, imputing with measures of central tendency is that they tend to reduce 
 imp <- mice:: mice(wine_train, method = "rf", m = 1)
 # Store data
 data_imp <- complete(imp)
+```  
+  
+Finally, we will create a data set to impute missing values with the median after we recode missing values in the predictor STARS as 0.
+```{r STARS-missing-values-impute-median}
+wine_train1_imputed_median <- wine_train1
+wine_train1_imputed_median <- imputeTS ::na_mean(wine_train1_imputed_median, option = "median")
+
 ```
 # Build Models
 
@@ -278,20 +285,37 @@ poisson2 <- glm(wine_train1, formula = TARGET ~ STARS + LabelAppeal + AcidIndex,
 summary(poisson2)
 
 ```
+ 
 We see that the residual deviance is 22861 on 12794 degrees of freedom. Ideally the ratio of deviance to df should be 1. Otherwise there is overdispersion in the model.
 
 ```{r,overdisp2}
 dispersiontest(poisson2)
 ```
-There is no indication of overdispersion in our data.
 
+There is no indication of overdispersion in our data.  
 
-## Negative Binomial Model
+## Negative Binomial: Model1
 ```{r, negative-binom-model}
-
-summary(glm.nb(wine_train1, formula = TARGET ~. ))
+nb1 <- glm.nb(wine_train1, formula = TARGET ~. )
+summary(nb1)
 
 ```
+Here our output from our first poisson model is exactly the same as our first negative binomial model. 
+
+
+
+## Negative Binomial: Model2
+For our second negative binomial we are going to use the function **stepAIC()** to complete forward selection to see how it compares to our other models.  We don't want to use the limited set of variables (STARS,LabelAppeal, and AcidIndex) as we've done before because we know that the model output would match our second Poisson model exactly.
+
+The stepAIC cannot handle NA values so we are going to use our wine_train1_imputed_median, which has used the median of the data column for missing data points after setting missing STARS values equal to 0.  
+```{r, negative-binom-model-2}
+nb2 <- glm.nb(wine_train1_imputed_median, formula = TARGET ~ .)
+
+stepmodel <- stepAIC(nb2,selection='forward')
+
+```
+
+
 
 # Select Models
 
@@ -308,10 +332,10 @@ library(dvmisc)
 library(kableExtra)
 
 lm5 <- c('Fewer variables and missing STARS variables recoded as 0',AIC(model5),mean(model5$residuals^2))
-p1 <- c('STARS = 0 where missing',poisson1$aic,get_mse(poisson1))
+p1 <- c('STARS = 0 where missing',poisson1$aic,mean(poisson1$residuals^2))
 p2 <- c('STARS = 0 where missing with fewer variables',poisson2$aic,get_mse(poisson2))
-nb1 <- c('',0,0)
-nb2 <- c('',0,0)
+nb1 <- c('STARS = 0 where missing',31708,mean(nb1$residuals^2))
+nb2 <- c('STARS = 0 where missing with fewer variables',AIC(stepmodel),mean(stepmodel$residuals^2))
 
 results <- cbind(lm5,p1,p2,nb1,nb2)
 
@@ -323,23 +347,25 @@ results %>%
   kable_styling()
 
 ```
-Here we see Poisson #1 is the best model because it has the lowest AIC and MSE.  
+Here we see our Poisson #1 is the best model because it has the lowest AIC and MSE.  Our first negative binomial model is the same but we'll choose to use our poisson model moving forward.    
 
 ### Prediction on the Test Data  
+The coefficients of our best model are:  
+```{r best-coeff}
+poisson1$coefficients
+```
+
 Now we will use our poisson model to run our test data.  
 ```{r, predict-test-data}
 wine_test1 <-  wine_test %>%
   mutate(STARS = replace_na(STARS, 0)) 
-
+wine_test1 <- subset(wine_test1,select = -c(TARGET))
 predictions <- predict(poisson1,wine_test1)
-predictions_rounded <- ceiling(predictions)
-table(predictions_rounded)
+print("The top 6 predictions are:")
+head(predictions)
 ```
 
-```{r, plotted-test-predictions}
-hist(predictions_rounded)
 
-```
 
 # Code Appendix
 
