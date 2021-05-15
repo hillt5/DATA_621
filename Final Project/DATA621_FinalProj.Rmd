@@ -1,0 +1,177 @@
+---
+title: "Data 621 - HW5"
+author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
+date: "5/23/2021"
+output:
+  html_document:
+    highlight: pygments
+    number_sections: no
+    theme: flatly
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: TRUE
+    toc_depth: 2 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, error=FALSE, warning=FALSE, message=FALSE, fig.align = "center")
+```
+
+
+```{r loadData, include=FALSE}
+# Libraries
+
+
+library(DataExplorer)
+library(visdat)
+library(dplyr)
+library(tidyr)
+library(MASS)
+library(psych)
+library(AER)
+library(mlr)
+library(mice)
+library(imputeTS)
+
+set.seed(621)
+```
+
+
+```{r data}
+# training data
+wine_train <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW5/wine-training-data.csv') %>% 
+  dplyr::select(-1)
+
+# test data
+wine_test <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/HW5/wine-evaluation-data.csv') %>% 
+  dplyr::select(-1)
+```
+
+
+
+# Overview
+
+In this assignment, we will explore, analyze and model a data set containing information on approximately 12,000 commercially available wines. The variables are mostly related to the chemical properties of the wine being sold. The response variable is the number of sample cases of wine that were purchased by wine distribution companies after sampling a wine. These cases would be used to provide tasting samples to restaurants and wine stores around the United States. The more sample cases purchased, the more likely is a wine to be sold at a high end restaurant. A large wine manufacturer is studying the data in order to predict the number of wine cases ordered based upon the wine characteristics. If the wine manufacturer can predict the number of cases, then that manufacturer will be able to adjust their wine offering to maximize sales. 
+
+The objective is to build a count regression model to predict the number of cases of wine that will be sold given certain properties of the wine.
+
+
+# Data Exploration
+
+Below is the description of the variables of interest in the data set.
+
+|VARIABLE NAME|DEFINITION|THEORETICAL EFFECT|
+|--|----|---|
+|TARGET|Number of Cases Purchased|None|
+|AcidIndex|Proprietary method of testing total acidity of wine by using a weighted average||
+|Alcohol|Alcohol Content||
+|Chlorides|Chloride content of wine||
+|CitricAcid|Citric Acid Content||
+|Density|Density of Wine||
+|FixedAcidity|Fixed Acidity of Wine||
+|FreeSulfurDioxide|Sulfur Dioxide content of wine||
+|LabelAppeal|Marketing Score indicating the appeal of label design for consumers. High numbers suggest customers like the label design. Negative numbers suggest customers don't like the design.|Many consumers purchase based on the visual appeal of the wine label design. Higher numbers suggest better sales.|
+|ResidualSugar|Residual Sugar of wine||
+|STARS|Wine rating by a team of experts. 4 Stars = Excellent, 1 Star = Poor|A high number of stars suggests high sales|
+|Sulphates|Sulfate content of wine||
+|TotalSulfurDioxide|Total Sulfur Dioxide of Wine||
+|VolatileAcidity|Volatile Acid content of wine||
+|pH|pH of wine||
+
+
+## Statistics
+
+All of the data are numeric and here is the statistics summary of all the predictors.
+
+```{r, describe}
+wine_train %>% dplyr::select(-1) %>% describe()
+```
+
+## Numeric Variables
+
+Seeing the distribution plots below of all the predictor variables, it is evident that variables Alcohol, Chlorides, CitricAcid, Density, FixedAcidity, FreeSulphurDioxide, pH, ResidualSugar, Sulphates, TotalSulphurDioxide and VolatileAcidity appear to be symmetrical but non Gaussian since there is a strong spike near the median and not smooth near the tails on either side. 
+
+LabelAppeal distribution appears mostly normal while for AcidIndex and STARS seems to follow Poisson distribution.
+
+```{r, histograms}
+plot_histogram(wine_train[-1], geom_histogram_args = list("fill" = "tomato4"))
+```
+
+
+```{r, distinct-values}
+tibble(wine_train %>% summarize_all(n_distinct))
+```
+
+
+All variables in this dataset are initially interpretable as numeric data. There are several variables, including AcidIndex, LabelAppeal, and STARS that have few distinct values and may be treated as factors in the future. The target variable, number of cases, also only spans values 0 - 8.  
+
+
+## Correlations
+
+The `corrplot` below shows the correlation between predictor variables by ignoring the missing entries.
+
+```{r, corrplot}
+forcorr <- wine_train[complete.cases(wine_train),-1]
+corrplot::corrplot(cor(forcorr), type = 'lower')
+```
+
+From the above `corrplot`, it is apparent that 
+
+* `AcidIndex` and `FixedAcidity` are positively correlated. 
+* `STARS` and `LabelAppeal` are positively correlated. 
+* `STARS` and `AcidIndex` are negatively correlated.
+
+
+
+
+
+
+
+
+## Missing Values
+
+
+```{r, missing-values}
+
+
+colSums(is.na(wine_train))
+
+
+vis_dat(wine_train  %>% dplyr:: select(pH, ResidualSugar, Chlorides, Alcohol, FreeSulfurDioxide , TotalSulfurDioxide, Sulphates, STARS))
+
+
+```
+
+
+The remaining missing values comprise less than ten percent of observations separately. Taken together, just over 50% of observations have complete data available.  
+
+# Data Preparation
+
+## Missing Values
+# Build Models
+
+
+# Select Models
+
+# Code Appendix
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
