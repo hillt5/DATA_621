@@ -1,5 +1,5 @@
 ---
-title: "Data 621 - HW5"
+title: "Data 621 - Final Project"
 author: "Devin Teran, Atina Karim, Tom Hill, Amit Kapoor"
 date: "5/23/2021"
 output:
@@ -45,13 +45,30 @@ fires <- read.csv('https://raw.githubusercontent.com/hillt5/DATA_621/master/Fina
 ```
 
 
+# Abstract  
+For the final assignment, the team will be looking at a dataset of forest fires identified in Montesinho Natural Park, located in the mountainous northeast of Portugal. The original paper was published by a nearby university with the intention of offering low-cost prediction based on available meteorological measurements. Their model used information collected in realtime to identify fires without more specialized equipment - sattelite imaging and smoke scanners.   
 
-# Overview
+The objective is to build a model that predicts the burned area of the forest given the explanatory variables. Additionally, a temporal model could be developed to understand which day and weather patterns offer the highest risk conditions.  
 
-For the final assignment, the team will be looking at a dataset of forest fires identified in Montesinho Natural Park, located in the mountainous northeast of Portugal. The original paper was published by a nearby university with the intention of offering low-cost prediction based on available meteorological measurements. Their model used information collected in realtime to identify fires without more specialized equipment - sattelite imaging and smoke scanners. 
+# Keywords    
+Regression modeling, forest fires, meteorological measurements  
 
+# Introduction    
+Every year forest fires cause enormous amounts of destruction that results in the loss of human and animal life and economical and ecological loss.  Unpredictable forest fires make it very difficult for fire departments to plan in order to have an appropriate amount of resources in order to effectively fight all the fires.  By creating a model that usings meteorological measurements such as wind and relative humidity, fire departments would be able to be better prepared in order to fight fires more effectively and ideally decrease the amount of destruction that is caused each year by forest fires.  
 
-The objective is to build a model that predicts the burned area of the forest given the explanatory variables. Additionally, a temporal model could be developed to understand which day and weather patterns offer the highest risk conditions.
+# Literature Review  
+**[A Data Mining Approach to Predict Forest Fires using Meterological Data](http://www3.dsi.uminho.pt/pcortez/fires.pdf) by Paulo Cortez and Anibal Morais** focused on using meterological data to predict smaller forest fires.  This study focused on meterological data because it can easily be captured through weather stations in real-time for low costs.  Other methods of infrared scanning and satellite are more expensive.  Their work used a SVM, neural network, multiple linear regression and other data mining methods in order to predict the weather conditions that created small fires.  While small fires are much more common than large fires, a drawback to this study is it doesn't predicte when large fires will occur.  The outcome of this study helps fire department manage resources by reaching fires more quickly.
+
+The **Wildfire Burn Area Prediction paper by Adam Standford-Moore and Ben Moore** aimed to predicate the burn area of wildfires.  They used Kaggle data of historical wildfires in the United States from 1992-2015 and UCI dataset of wildfires in Portugal including info on first start and end date, longitude, latitude, year, and fire cause.  The UCI dataset included weather features, which proved to be important in the modeling.  Unlike other groups, this paper took all of the historical fires and binned them into 10 groups according to the fire size.  They then sampled 4,000 fires from each bin in order to complete their modeling.  Some of the bins with smaller fire sizes were heavily overrepresented in the data and they did this in an effort to balance the data.  This group used various modeling approaches including SVM, Neural Networks, K-Nearest Neighbors, Decision Trees, Linear Regression and more.  The best performance came from the SVM.  The smaller fire sizes proved easier to predict, which alines with some of the other studies.  This study found the features related to weather were more predictive over the historical fire data.
+
+The article, **Predicting forest fires burned area and rate of spread from pre-fire multispectral satellite measurements, by Carmine Maffeia and Massimo Menenti** had an interesting take away that their focus was almost solely on moisture in the plant life on the ground.  They focused on weather conditions in an attempt to determine how it would affect the moisture levels in plant life since plants will fuel fire.  Plants with less moisture with burn quickly.  They were attempting to come up with their own function to measure the moisture content by focusing on plant moisture at different levels on the ground (surface vs deeper levels of organic matter).  They used various satellite imaging resources which was different from other studies in that this data collection is more expensive.  It'd be interesting to see how this studies findings impacts towns and their ability to obtain data through more expensive collection routes. Our analysis will not include these expensive data sources and instead will focus on meterological measurements as inexpensive data sources.
+
+# Methodology
+# Experimentation and Results
+# Discussion and Conclusions
+# References
+# Appendices 
+
 
 
 
