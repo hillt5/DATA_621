@@ -1,0 +1,51 @@
+Paulo Cortez
+& Anibal Morais
+DM Approach to Predict Forest Fires using Meterological Data
+
+Abstract
+	Why should we care?
+		-economical damage
+		-ecological damage
+		-endanger human lives
+		-resource management
+
+	How do they analyze it?
+		-SVM 
+		-Random Forests
+		-Features selection setups: spatial,temporal,FWI components, weather attributes
+		-Multiple Regressions
+		-Decision tree
+		-Neural Networks
+
+	Best model:
+		-SVM & Weather inputs (temp,rel humidity,rain and wind) can predict small fires
+
+	Some Causes of Wildfires:
+		-humans making mistakes
+		-lightning
+
+	Goal: Use low cost ways to predict forest fires. 
+
+
+Forest Fire Data
+	Fire Weather Index (FWI) - Canadian system for rating fire danger
+		VARIABLE							NOTES
+		-FineFuelMoistureCode (FFMC)		Describes SURFACE moisture. Influence ignition & fire spread
+		-DuffMoistureCode(DMC)				Describe DEEP organic layer moisture. Influence fire intensity.   
+		-DroughtCode(DC)					Describe DEEP organic layer moisture. Influence fire intensity.
+		-InitialSpreadIndex (ISI)			Score relates to fire velocity spread
+		-BuildupIndex(BUI)					Amount of fuel available
+		-FWI								Fire Intensity. combines ISI & BUI
+
+Conclusion
+	Use this model which using meterological data instead of satellite data or infrared/smoke scanners since those are expensive to run.  Weather stations can be meterological data cheap and real-time.
+
+	Pros: Good for small fire prediction which are most common. Bad at large fire predictions.
+
+
+
+For our project:
+Link: http://www3.dsi.uminho.pt/pcortez/fires.pdf
+
+
+A Data Mining Approach to Predict Forest Fires using Meterological Data by Paulo Cortez and Anibal Morais focused on using meterological data to predict smaller forest fires.  This study focused on meterological data because it can easily be captured through weather stations in real-time for low costs.  Other methods of infrared scanning and satellite are more expensive.  Their work used a SVM, neural network, multiple linear regression and other data mining methods in order to predict the weather conditions that created small fires.  While small fires are much more common than large fires, a drawback to this study is it doesn't predicte when large fires will occur.  The outcome of this study helps fire department manage resources by reaching fires more quickly.

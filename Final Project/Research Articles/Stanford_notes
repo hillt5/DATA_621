@@ -1,0 +1,55 @@
+Stanford 
+
+Introduction
+Motivation
+	Why Important?
+	-Destroy communities
+	-Cost $
+	-Resource allocation fire departments
+
+	Use weather parameters and historical fire data to predict how large fire will be in hectares.
+	Definition: hectares:10,000 sq meters or 2.471 acres
+
+Related Work
+
+Radke - convolutional neural network 
+Tehrany - fire susceptibility heatmap using LogitBoost ensemble-based decision tree model and SVM, random forest and kernel logistic regression models
+Castelli- Naives Bias, Decision trees, svm and random forest
+
+Datasets
+	Kaggle Wildfire dataset of 1.88 million wildfires in US during 1992-2015
+		-year
+		-date fire start
+		-fire cause code
+		-lat/long
+		-fire size
+
+	Bin fire sizes together and random selected 4,000 fires from each bin since some fire sizes were overrepresented
+
+	UCI Dataset - 512 fires from national park in Portugal with weather features
+		-x/y location
+		-date
+		-day of week
+		-Fine Fuel Moisture Code (FFMC)
+		-Duff Moisture Code (DMC)
+		-Drought Code (DC)
+		-Initial Spread Index (ISI)
+		-temp (Celsius)
+		-relative humidity
+		-wind
+		-rain
+
+	Parameters had weak correlations with each other and fire size.  Most correlated what relative humidity.
+
+	Used PCA to determine relevant data features and figured out weather is most important.
+
+	Large fires happen in peak of summer
+
+	Made LR,SVM,Neural Network, K-nearest neighbors, Decision tree, stacked regressors
+
+	Linear Regression, SVM and neural network performed the best.
+
+
+
+For our projects:
+The Wildfire Burn Area Prediction paper by Adam Standford-Moore and Ben Moore aimed to predicate the burn area of wildfires.  They used Kaggle data of historical wildfires in the United States from 1992-2015 and UCI dataset of wildfires in Portugal including info on first start and end date, longitude, latitude, year, and fire cause.  The UCI dataset included weather features, which proved to be important in the modeling.  Unlike other groups, this paper took all of the historical fires and binned them into 10 groups according to the fire size.  They then sampled 4,000 fires from each bin in order to complete their modeling.  Some of the bins with smaller fire sizes were heavily overrepresented in the data and they did this in an effort to balance the data.  This group used various modeling approaches including SVM, Neural Networks, K-Nearest Neighbors, Decision Trees, Linear Regression and more.  The best performance came from the SVM.  The smaller fire sizes proved easier to predict, which alines with some of the other studies.  This study found the features related to weather were more predictive over the historical fire data.

@@ -1,0 +1,57 @@
+ISPRS_Journal_Notes
+Page1
+Abstract
+	fire danger ratings rely on how much dead fuel there is along with meterological and environmental variables to predict how many fires will happen and their spread
+
+	goal of study was to develop new approach to estiamte the probability distribution functions of fire burned area, duration and rate of fire spreading as a function of Perpendicular Moisturie Index(PMI).. PMI goes down as live fuel mositure content (LFMC) decreases. (PMI goes down as plants are drier.)
+
+	PMI is a covariate of burn area and spread rate but not how long the fire burns
+
+	Get data from meteorological and environmental variables.  "Get live fuel condition from MODIS multispectral measurements in the neat infrared and shortwave infrared". They scan the moisture content of vegetation from above to help predict wildfires.  
+
+	Satellites help take pics of the ground level and what's happening.
+
+	At the end of dry season, more extreme fires happen
+
+Introduction
+	Why are wildfires bad?
+	-human casualties
+	-negative effects on carbon sequestration 
+		Definition: Carbon sequestration is the process of capturing and storing atmospheric carbon dioxide. It is one method of reducing the amount of carbon dioxide in the atmosphere with the goal of reducing global climate change.
+		Link:https://www.usgs.gov/faqs/what-carbon-sequestration?qt-news_science_products=0# 
+	-economic loss
+
+	Climate change is effecting fuel moisture and fuel avaibility for fires which effect the number of fires and how intense they are
+
+	Weather is a big predicter of fire characteristics
+
+	Live fuels moisture has a big impact on fires
+
+	Used 10 year of fire data from Campania, Italy 
+
+Materials and methods
+	Characteristics of fire data:
+		-Long & lat
+		-datetime begin fire
+		-datetime fire ended
+		-total burned area
+
+	99.8% of fires are caused by humans either on purpose or accident
+	Peak in summer
+
+	Canadian Forest Fire Weather Index System Data:
+		-Precipitation
+		-Wind speed
+		-Relative humidity
+		-air temp
+
+
+
+		How much dead and live fuels there are helps determine the spread rate of fire
+
+Conclusion
+	"PMI is a covariate of both burned area and rate of spread. Remote sensing measurements in the solar spectrum are thus a viable mean to complement existing fire danger mappying tools, contributing to the prediction of the probability of extreme events conditional to ignoition"
+
+
+The article, Predicting forest fires burned area and rate of spread from pre-fire multispectral satellite measurements, by Carmine Maffeia and Massimo Menenti had an interesting take away that their focus was almost solely on moisture in the plant life on the ground.  They focused on weather conditions in an attempt to determine how it would affect the moisture levels in plant life since plants will fuel the fire.  Plants with less moisture with burn quickly.  They were attempting to come up with their own function to measure the moisture content by focusing on plant moisture at different levels on the ground (surface vs deeper levels).  They used various satellite imaging resources which was different from other studies in that this data collection is more expensive.  It'd be interesting to see how this studies findings impacts towns and their ability to obtain data through more expensive collection routes. 
+
