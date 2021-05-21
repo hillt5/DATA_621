@@ -124,6 +124,7 @@ fires %>% dplyr::select(day) %>% unique
 ```{r fire-day}
 # fires by day
 fires_by_day <- fires %>% 
+  mutate(day=factor(day, levels = c('sun', 'mon', 'tue','wed','thu','fri','sat'))) %>% 
   group_by(day) %>% 
   summarise(total_by_day = n())
 
@@ -136,6 +137,7 @@ fires_by_day %>%
 
 # fires by month
 fires_by_month <- fires %>% 
+  mutate(month=factor(month, levels = c('jan', 'feb', 'mar','apr','may','jun','jul','aug','sep','oct','nov','dec'))) %>% 
   group_by(month) %>% 
   summarise(total_by_month = n())
 
