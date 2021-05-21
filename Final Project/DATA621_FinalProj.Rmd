@@ -33,6 +33,7 @@ library(AER)
 library(mlr)
 library(mice)
 library(imputeTS)
+library(ggplot2)
 
 set.seed(621)
 ```
@@ -107,6 +108,43 @@ All of the data are numeric and here is the statistics summary of all the predic
 ```{r, describe}
 fires %>%  describe()
 ```
+
+```{r months}
+# unique months
+fires %>% dplyr::select(month) %>% unique
+```
+
+
+```{r days}
+# unique days
+fires %>% dplyr::select(day) %>% unique
+```
+
+
+```{r fire-day}
+# fires by day
+fires_by_day <- fires %>% 
+  group_by(day) %>% 
+  summarise(total_by_day = n())
+
+fires_by_day %>% 
+  ggplot(aes(x=day, y=total_by_day)) + 
+  geom_col()
+```
+
+```{r fire-month}
+# fires by month
+fires_by_month <- fires %>% 
+  group_by(month) %>% 
+  summarise(total_by_month = n())
+
+fires_by_month %>% 
+  ggplot(aes(x=month, y=total_by_month)) + 
+  geom_col()
+```
+
+We can see in above 2 plots that fire frequency is more on weekends. Also Aug nd Sep are the months having most of the fire in the year.
+
 
 ## Numeric Variables
 
