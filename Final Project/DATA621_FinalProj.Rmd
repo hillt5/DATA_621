@@ -34,6 +34,7 @@ library(mlr)
 library(mice)
 library(imputeTS)
 library(ggplot2)
+library(caret)
 
 set.seed(621)
 ```
@@ -109,7 +110,7 @@ All of the data are numeric and here is the statistics summary of all the predic
 fires %>%  describe()
 ```
 
-```{r months}
+```{r un-months}
 # unique months
 fires %>% dplyr::select(month) %>% unique
 ```
@@ -209,10 +210,12 @@ At first glance, there are no missing values in this dataset. However, only days
 
 fires %>% group_by(month) %>% summarize(n())
 
-
-
 ```
 
+```{r, pltmiss}
+plot_missing(fires %>% dplyr::select(-area))
+#head(fires)
+```
 
 
 The most observations are available for the month of August by a large margin.  March, July and February are the next most common months. January, May, and November have 2, 2, and 1 fires reported.
@@ -223,7 +226,75 @@ Looking at the August number, it's evident that multiple fires were happening pe
 # Data Preparation
 
 
-## Missing Values
+## Handling missing and outliers
+The very first in data preparation we will perform is handling missing data and outliers through imputation. We will use mice package to perform imputation here. MICE (Multivariate Imputation via Chained Equations) is one of the commonly used package for this activity. It creates multiple imputations for multivariate missing data. Also we will perform `nearZeroVar` to see if a variable has very little change or variation and not useful for prediction. If we found any predictor variable satisfying this condition we would remove it.
+
+
+```{r mice-impute}
+set.seed(317)
+
+# Training set
+fires.clean <- mice(data.frame(fires), method = 'rf', m=2, maxit = 2, print=FALSE)
+fires.clean <- complete(fires.clean)
+
+nzv_preds <- nearZeroVar(fires.clean)
+fires.clean <- fires.clean[,-nzv_preds]
+
+head(fires.clean)
+```
+
+## Create Dummy Variables
+The variable month and day are categorical variables, having 12 and 7 classes. For modeling, we got to convert into set of dummy variables. We will use `dummyVars` function for this purpose that creates a full set of dummy variables.
+
+```{r dummy-vars}
+set.seed(317)
+
+# for month
+dum.month <- dummyVars(area ~ month, data = fires.clean)
+dum.mon.predict <- predict(dum.month, fires.clean)
+fires.clean <- cbind(dum.mon.predict, fires.clean) %>% dplyr::select(-month)
+
+# for day
+dum.day <- dummyVars(area ~ day, data = fires.clean)
+dum.day.predict <- predict(dum.day, fires.clean)
+fires.clean <- cbind(dum.day.predict, fires.clean) %>% dplyr::select(-day)
+
+head(fires.clean)
+```
+
+
+## Preprocess using transformation
+
+In this step we will use caret `preprocess` method using transformation as `YeoJohnson` which applies Yeo-Johnson transformation, like a BoxCox, but values can be negative as well.
+
+```{r transform-train}
+set.seed(317)
+preproc_traindf <- preProcess(fires.clean, method = "YeoJohnson")
+fires.clean <- predict(preproc_traindf, fires.clean)
+
+head(fires.clean)
+```
+
+
+## Training and Test Partition
+Finally in this step for data preparation we will partition the training dataset for training and test using `createDataPartition` method from `caret` package. We will reserve 75% for training and rest 25% for validation purpose.
+
+
+```{r partition}
+set.seed(317)
+
+partition <- createDataPartition(fires.clean$area, p=0.75, list = FALSE)
+
+# training/test partition for independent variables
+X.train <- fires.clean[partition, ] %>% dplyr::select(-area)
+X.test <- fires.clean[-partition, ] %>% dplyr::select(-area)
+
+# training/test partition for dependent variable area
+y.train <- fires.clean$PH[partition]
+y.test <- fires.clean$PH[-partition]
+```
+
+
 
 
 
