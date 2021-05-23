@@ -10,8 +10,11 @@ output:
     toc: yes
     toc_float: yes
   pdf_document:
-    toc: TRUE
-    toc_depth: 2 
+    toc: yes
+    toc_depth: 2
+  word_document:
+    toc: yes
+    toc_depth: '2'
 ---
 
 ```{r setup, include=FALSE}
@@ -60,6 +63,7 @@ Regression modeling, forest fires, meteorological measurements
 
 
 # Literature Review  
+
 **[A Data Mining Approach to Predict Forest Fires using Meterological Data](http://www3.dsi.uminho.pt/pcortez/fires.pdf) by Paulo Cortez and Anibal Morais** focused on using meterological data to predict smaller forest fires.  This study focused on meterological data because it can easily be captured through weather stations in real-time for low costs.  Other methods of infrared scanning and satellite are more expensive.  Their work used a SVM, neural network, multiple linear regression and other data mining methods in order to predict the weather conditions that created small fires.  While small fires are much more common than large fires, a drawback to this study is it doesn't predict when large fires will occur.  The outcome of this study helps fire department manage resources by reaching fires more quickly.
 
 The **[Wildfire Burn Area Prediction paper](http://cs229.stanford.edu/proj2019aut/data/assignment_308832_raw/26582553.pdf) by Adam Standford-Moore and Ben Moore]** aimed to predicate the burn area of wildfires.  They used Kaggle data of historical wildfires in the United States from 1992-2015 and UCI dataset of wildfires in Portugal including info on first start and end date, longitude, latitude, year, and fire cause.  The UCI dataset included weather features, which proved to be important in the modeling.  Unlike other groups, this paper took all of the historical fires and binned them into 10 groups according to the fire size.  They then sampled 4,000 fires from each bin in order to complete their modeling.  Some of the bins with smaller fire sizes were heavily overrepresented in the data and they did this in an effort to balance the data.  This group used various modeling approaches including SVM, Neural Networks, K-Nearest Neighbors, Decision Trees, Linear Regression and more.  The best performance came from the SVM.  The smaller fire sizes proved easier to predict, which alines with some of the other studies.  This study found the features related to weather were more predictive over the historical fire data.
@@ -67,8 +71,8 @@ The **[Wildfire Burn Area Prediction paper](http://cs229.stanford.edu/proj2019au
 The article, **[Predicting forest fires burned area and rate of spread from pre-fire multispectral satellite measurements](https://www.sciencedirect.com/science/article/pii/S0924271619302515) by Carmine Maffeia and Massimo Menenti]** had an interesting take away that their focus was almost solely on moisture in the plant life on the ground.  They focused on weather conditions in an attempt to determine how it would affect the moisture levels in plant life since plants will fuel fire.  Plants with less moisture with burn quickly.  They were attempting to come up with their own function to measure the moisture content by focusing on plant moisture at different levels on the ground (surface vs deeper levels of organic matter).  They used various satellite imaging resources which was different from other studies in that this data collection is more expensive.  It'd be interesting to see how this studies findings impacts towns and their ability to obtain data through more expensive collection routes. Our analysis will not include these expensive data sources and instead will focus on meterological measurements as inexpensive data sources.
 
 # Methodology
+
 # Experimentation and Results
-# Discussion and Conclusions
 
 # Data Exploration
 
@@ -208,13 +212,13 @@ ggplot(fires,aes(Y,area)) + geom_point() +stat_smooth(method="lm")
 ggplot(fires,aes(X,area)) + geom_point() +stat_smooth(method="lm")
 
 ```
-We have imposed a linear fit (with 95% confidence band in grey) to each of the pairs of variables to understand the relationship.There does not seem to be a strong linear relationship between any of the pairs (strongest appear to be with temperature). We can also see some outliers in the data. Please note, that there are instances where the response variable seems to fall below 0 - such as for area and FFMC. Once again, this may mean that the burned area was below 1 ha.
+We have imposed a linear fit (with 95% confidence band in grey) to each of the pairs of variables to understand the relationship. We can also see some outliers in the data. Please note, that there are instances where the response variable seems to fall below 0 - such as for area and FFMC. Once again, this may mean that the burned area was below 1 ha.
 
 ## Outliers
 
 We suspect outliers in some of the variables. Let's further test the theory out:
 
-```{r}
+```{r,outliers}
 fires %>% 
   dplyr::select(-month, -day,-area) %>% 
   pivot_longer(everything(), names_to = 'Var', values_to='Value') %>% 
@@ -325,18 +329,19 @@ X.test <- fires.clean[-partition, ]
 
 ```
 
-
 # Build Models
+
 
 ## Linear Modeling
 
 We have transformed our data to fulfill the assumptions of linear regression. We will first test out linear regression on our data.
 
+
 ### Model 1
 
 Using all data gives R^2 of ~10%
 ```{r, model1}
-lm1 <- lm(X.train,formula=area ~ .)
+lm1 <- lm(X.train,formula=area ~.)
 summary(lm1)
 ```
 
@@ -351,6 +356,8 @@ summary(stepAIC_lm)
 
 ### Model 3
 
+This subset only runs the linear model for small forest fires.
+
 ```{r model-3}
 small_fires <- X.train[X.train$area < 2,]
 small_lm1 <- glm.nb(small_fires,formula = area ~.)
@@ -359,7 +366,8 @@ summary(small_lm1)
 
 ### Model 4
 
-If we get rid of fires with area of 0, then we get an R^2 of 19%
+If we get rid of fires with area of 0, then we get an R^2 of 19%. While we have a large number of records where area=0, this subset would be interesting to examine if the fire department is looking to predict large forest fires that would need substantial resources to deal with.
+
 ```{r model-4}
 fires_over0 <- X.train[X.train$area > 0,]
 lm0 <- lm(area ~ .,data=fires_over0)
@@ -367,28 +375,116 @@ summary(lm0)
 
 ```
 
-## Regularization
+### Model 5
 
-One thing to note from our linear models, is the difference between the adjusted r^2 and r^2 - this indicates that there is multicollinearity in our data (which we has observed with some of the IVs during EDA). This may result in overfitting i.e. overestimating some of the coefficients assigned to our predictors. Such a model, will not perform well in the unseen test data. Therefore, we perform regularization through ridge regression to overcome this issue.
+leaps() performs an exhaustive search for determing the best predictors to use to predict our target variable.
+
+```{r,leaps, results='hide'}
+library(leaps)
+regsubsets.out <-
+    regsubsets(area~.,
+               data =X.train,
+               nbest = 1,       # 1 best model for each number of predictors
+               nvmax = NULL,    # NULL for no limit on number of variables
+               force.in = NULL, force.out = NULL,
+               method = "exhaustive")
+
+summary.out <- summary(regsubsets.out)
+as.data.frame(summary.out$outmat)
+```
+Now, that we have run leaps through our dataset, let's see what the package recommends in terms of the number of predictors to use for our dataset.
+```{r,predictornumber}
+which.max(summary.out$adjr2)
+```
+Seems like we have to use 13 predictors to get the best mode and the summary table below provoides details on which predictors to use for the model. The best predictors are indicated by 'TRUE'.
+```{r,which-predictors}
+summary.out$which[13,]
+```
+```{r, best-model}
+best.model <- lm(area ~ day.thu + month.aug + month.dec + month.jan + month.jul+ month.jun+month.mar+month.oct+month.sep+X+Y+DMC+temp+RH, data = X.train)
+summary(best.model)
+```
+According to leaps, best model includes the following predictors - Thursday, the months of August, December, January, July, June, March, October, September, spatial coordinates X & Y, relative humidity, temperature and duff moisture code. However, the adjusted r^2 for this model is still low at 0.057, and is significant. Residual SE is also low at 0.6344.
+
+So far, our actual best model is when we leave out the records with burned area less than 0. We will proceed with this model. But before we entirely dismiss the second best model, produced by leaps, we will try to see if there are any other methods we could try using the predictors suggested by leaps to get a better model fit.
+
+## Robust Regression
+
+Our dataset also had outliers - which we handled through imputation during data preparation. However, we are also going to build a robust regression model to fully ensure that outliers and influential observations are not affecting our model. Robust regression is an iterative procedure that seeks to identify outliers and
+minimize their impact on the coefficient estimates.
+
+```{r,robust}
+rr.bisquare <- rlm(area~day.thu + month.aug + month.dec + month.jan + month.jul+ month.jun+month.mar+month.oct+month.sep+X+Y+DMC+temp+RH, data=X.train, psi = psi.bisquare)
+summary(rr.bisquare)
+```
+
+
+
+
+```{r,compare}
+summary(best.model)$sigma
+summary(rr.bisquare)$sigma
+```
+
+Upon comparing the RSE from our original linear model (best.model) and the robust regression model, keeping all variables constant, it seems that our original model performance was better.
+
+From here on, we will dismiss the best model produced by leaps and move forward with the subset where burned area is greater than 0 ha. 
+
+However, upon revising the coefficients of our model, it seems like the only signficant predictor for large fires at p<.05 level is DMC - a moisture code index that takes rates moisture content that takes into account rain, humidity and temperature. We will therefore try to refine this model a little bit with the leaps package to see if we can get a better fit just for this subset.
+
+### Model 4 (modified)
+
+```{r,model-4edited,results='hide'}
+regsubsets.out2 <-
+    regsubsets(area~.,
+               data =fires_over0,
+               nbest = 1,       # 1 best model for each number of predictors
+               nvmax = NULL,    # NULL for no limit on number of variables
+               force.in = NULL, force.out = NULL,
+               method = "exhaustive")
+
+summary.out2 <- summary(regsubsets.out2)
+as.data.frame(summary.out$outmat)
+```
+
+```{r,predictornumber2}
+which.max(summary.out2$adjr2)
+```
+Seems like we have to use 12 predictors to get the best mode and the summary table below provoides details on which predictors to use for the model. The best predictors are indicated by 'TRUE'.
+```{r,which-predictors2}
+summary.out$which[12,]
+```
+
+```{r,model4-final}
+lm0edit<- lm(area~day.thu + month.aug + month.dec + month.feb + month.jul+ month.jun+month.mar+month.oct+X+DMC+temp+RH, data = fires_over0)
+summary(lm0edit)
+```
+Our adjusted r^2 has decreased slightly, however we are seeing several significant predictors. We had flagged the dataset for multicollinearity previously and upon running the car() package to test for multicollinearity in our chosen regression mode - it seemed like there were aliased coefficients in the model suggesting perfect collinearity between certain IVs. Therefore, despite the lower adjusted r^2, it maybe safer to move forward with this model to avoid overfitting.
+
+## Regularized Model
+
+### Model 1: Ridge Regression
+
+ One thing to note from our linear model, is the difference between the adjusted r^2 and r^2 - this indicates that there is still multicollinearity in our data (which we has observed with some of the IVs during EDA). This may result in overfitting i.e. overestimating some of the coefficients assigned to our predictors. Such a model, will not perform well in the unseen test data. Therefore, we perform regularization through ridge regression to overcome this issue.
 
 Ridge regression is an extension of linear regression where the loss function is modified to minimize the complexity of the model (Singh,2019). We will build the glmnet() package to build the regularized model.
 
+
+
 ```{r,ridge}
 library(glmnet)
-x = as.matrix(X.train) # we need to convert our dataframes to a matrix to perform regularization
-y_train = X.train$area # highlighting the dependent variable
+x = data.matrix(fires_over0[,c('day.thu', 'month.aug', 'month.dec','month.feb','month.jul', 'month.jun','month.mar','month.oct','X','DMC','temp','RH')])
 
-x_test = as.matrix(X.test)
-y_test = X.test$area
+y_train = fires_over0$area # highlighting the dependent variable
 
 lambdas <- 10^seq(2, -3, by = -.1)
-ridge_reg = glmnet(x, y_train, nlambda = 25, alpha = 0, family = 'gaussian', lambda = lambdas)
+ridge_reg = glmnet(x, y_train, nlambda = 25, alpha = 0, lambda = lambdas) 
 
 summary(ridge_reg)
-
 ```
 
 One of the major differences between linear and regularized regression models is that the latter involves tuning a hyperparameter, lambda. for our model, we will see what the best lambda is.
+
 ```{r,lambda}
 # Using cross validation glmnet
 cv_ridge <- cv.glmnet(x, y_train, alpha = 0, lambda = lambdas)
@@ -418,17 +514,43 @@ data.frame(
 predictions_train <- predict(ridge_reg, s = optimal_lambda, newx = x)
 eval_results(y_train, predictions_train, X.train)
 
-# Prediction and evaluation on test data
-predictions_test <- predict(ridge_reg, s = optimal_lambda, newx = x_test)
-eval_results(y_test, predictions_test, X.test)
 ```
 
-We can see that our r^2 for the regularized model is 0.99 and the RMSE between the the actual and predicted number is very low, for both the training and test data sets.
+We can see that our r^2 for the regularized model has decreased which suggests that the ridge model has not improved the original model, rather deteriorated its fit. 
 
+## Select Models
 
+Before finalizing the linear regression model for predicting large forest fires, we will analyze the diagnostic plots for our chosen model.
 
+```{r,diagnostic}
+res0 <- resid(lm0edit)
+plot(density(res0))
+qqnorm(res0)
+qqline(res0)
+```
 
-# Select Models
+The diagnostic plots suggest that the residuals are normally fitted. Therefore, this is our final model. 
+
+### Predicting on the Test Data
+
+We will use out final model to predict the burned area from forest fires on our fire test, and view the results for the top rows to see if the numbers make sense:
+
+```{r,predictions}
+predictions <- predict(lm0edit,X.test)
+head(predictions)
+```
+
+## Discussion and Conclusion
+
+  The purpose of this study is to identify forest fires in Montesinho Natural Park and predict the area (in ha) that is likely to be affected, given weather conditions. Because our dataset categorized all small forest fires in this region(anything less than 1 ha) as 0, we decided to limit our study to only evaluate the area for large fires (area above or close to 1 ha).
+  
+  Our model indicates that the most significant predictor of larget forest fires (in terms of forest fires) is DMC. The Duff Moisture Code Index,is a numeric rating of the average moisture content of loosely compacted organic layers of moderate depth. In addition, it also seems from our model that large forest fires may also be likely to occur during the months of December and October in this region. This was surprising initially given that we were seeing such large numbers of forest fires in August during EDA. However, our final models seems to predict a significant but a weak negative relationship between large forest fires for August. This maybe because that there are higher numbers of small forest fires in the month of August rather than large ones. This is definitely an interesting insight that could be investigated in a future study.
+  
+  We hope this study could be used to improve disaster management and prevent significant damage from forest fires in Montesinho Natural Park in Portugal.
+ 
+```{r,summary}
+summary(lm0edit)
+```
 
 
 
@@ -444,7 +566,8 @@ Pages 263-278,
 ISSN 0924-2716,
 https://doi.org/10.1016/j.isprsjprs.2019.10.013.
 (https://www.sciencedirect.com/science/article/pii/S0924271619302515)  
-  
+4.Singh, Deepika (2019). Linear, Lasso, and Ridge Regression with R.https://www.pluralsight.com/guides/linear-lasso-and-ridge-regression-with-r
+
 # Appendices 
 
 ```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
