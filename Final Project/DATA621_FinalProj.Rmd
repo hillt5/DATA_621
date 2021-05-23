@@ -22,7 +22,6 @@ knitr::opts_chunk$set(echo=FALSE, error=FALSE, warning=FALSE, message=FALSE, fig
 ```{r loadData, include=FALSE}
 # Libraries
 
-
 library(DataExplorer)
 library(visdat)
 library(dplyr)
@@ -35,7 +34,7 @@ library(mice)
 library(imputeTS)
 library(ggplot2)
 library(caret)
-
+library (skimr)
 set.seed(621)
 ```
 
@@ -56,10 +55,12 @@ The objective is to build a model that predicts the burned area of the forest gi
 Regression modeling, forest fires, meteorological measurements  
 
 # Introduction    
-Every year forest fires cause enormous amounts of destruction that results in the loss of human and animal life and economical and ecological loss.  Unpredictable forest fires make it very difficult for fire departments to plan in order to have an appropriate amount of resources in order to effectively fight all the fires.  By creating a model that usings meteorological measurements such as wind and relative humidity, fire departments would be able to be better prepared in order to fight fires more effectively and ideally decrease the amount of destruction that is caused each year by forest fires.  
+
+  Every year forest fires cause enormous amounts of destruction that results in the loss of human and animal lives and economical and ecological loss. In addition, unpredictable forest fires make it very difficult for fire departments to plan in order to have an appropriate amount of resources in order to effectively fight all the fires.  By creating a model that uses meteorological measurements such as wind and relative humidity, fire departments would be able to prepare better in order to fight fires more effectively and ideally decrease the amount of destruction that is caused each year by forest fires.  
+
 
 # Literature Review  
-**[A Data Mining Approach to Predict Forest Fires using Meterological Data](http://www3.dsi.uminho.pt/pcortez/fires.pdf) by Paulo Cortez and Anibal Morais** focused on using meterological data to predict smaller forest fires.  This study focused on meterological data because it can easily be captured through weather stations in real-time for low costs.  Other methods of infrared scanning and satellite are more expensive.  Their work used a SVM, neural network, multiple linear regression and other data mining methods in order to predict the weather conditions that created small fires.  While small fires are much more common than large fires, a drawback to this study is it doesn't predicte when large fires will occur.  The outcome of this study helps fire department manage resources by reaching fires more quickly.
+**[A Data Mining Approach to Predict Forest Fires using Meterological Data](http://www3.dsi.uminho.pt/pcortez/fires.pdf) by Paulo Cortez and Anibal Morais** focused on using meterological data to predict smaller forest fires.  This study focused on meterological data because it can easily be captured through weather stations in real-time for low costs.  Other methods of infrared scanning and satellite are more expensive.  Their work used a SVM, neural network, multiple linear regression and other data mining methods in order to predict the weather conditions that created small fires.  While small fires are much more common than large fires, a drawback to this study is it doesn't predict when large fires will occur.  The outcome of this study helps fire department manage resources by reaching fires more quickly.
 
 The **[Wildfire Burn Area Prediction paper](http://cs229.stanford.edu/proj2019aut/data/assignment_308832_raw/26582553.pdf) by Adam Standford-Moore and Ben Moore]** aimed to predicate the burn area of wildfires.  They used Kaggle data of historical wildfires in the United States from 1992-2015 and UCI dataset of wildfires in Portugal including info on first start and end date, longitude, latitude, year, and fire cause.  The UCI dataset included weather features, which proved to be important in the modeling.  Unlike other groups, this paper took all of the historical fires and binned them into 10 groups according to the fire size.  They then sampled 4,000 fires from each bin in order to complete their modeling.  Some of the bins with smaller fire sizes were heavily overrepresented in the data and they did this in an effort to balance the data.  This group used various modeling approaches including SVM, Neural Networks, K-Nearest Neighbors, Decision Trees, Linear Regression and more.  The best performance came from the SVM.  The smaller fire sizes proved easier to predict, which alines with some of the other studies.  This study found the features related to weather were more predictive over the historical fire data.
 
@@ -104,6 +105,20 @@ All of the data are numeric and here is the statistics summary of all the predic
 ```{r, describe}
 fires %>%  describe()
 ```
+```{r,skimr}
+skimr::skim(fires)
+```
+
+It seems like our dataset has 517 observations and 13 columns. None of the variables have any missing values.
+It is also interesting to note that our response variable, area, has a large range and the difference between the median (0.52) and mean (~12) seems to suggest there maybe outliers in our data. It also seems like there are a number of 0s in our response variable. Let's check this:
+
+```{r,area-0}
+area_1 <- fires %>%
+  group_by(area) %>%
+  summarize(area_0=n())
+area_1
+```
+There are 247 observations were our target variable, area, is 0. This is not good for the assumptions of the linear model but we have little choice but to proceed. We assume that since the area is in hectare, 0 hectare means that the burned area is less than 1 hectare (107639 sqft.)
 
 ```{r un-months}
 # unique months
@@ -142,13 +157,13 @@ fires_by_month %>%
   geom_col()
 ```
 
-We can see in above 2 plots that fire frequency is more on weekends. Also Aug nd Sep are the months having most of the fire in the year.
+We can see in above 2 plots that fire frequency is more on weekends. Also Aug and Sep are the months having most of the fire in the year.
 
 
 
 ## Numeric Variables
 
-Except for the day and month columns, all of these variables are numeric.  The original authors mention that area is likely to require log or some other transformation for best contribution to a model.  
+Except for the day and month columns, all of these variables are numeric.  The original authors mention that our dependent variable, area is likely to require log or some other transformation for best contribution to a model.
 
 ```{r, histograms}
 plot_histogram(fires, geom_histogram_args = list("fill" = "tomato4"))
@@ -179,9 +194,25 @@ From the above `corrplot`, it is apparent that
 * `temp` is positively correlated with several of the indices, 
 * `temp` and `RH` are negatively correlated.
 
+It seems like our dataset has multicollinearity between the independent variables. Let's also further look ar the relationship between our response variable (area), and each of the predictor variables.
+```{r,corr2}
+ggplot(fires,aes(rain,area)) + geom_point() +stat_smooth(method="lm")
+ggplot(fires,aes(wind,area)) + geom_point() +stat_smooth(method="lm")
+ggplot(fires,aes(RH,area)) + geom_point() +stat_smooth(method="lm")
+ggplot(fires,aes(temp,area)) + geom_point() +stat_smooth(method="lm")
+ggplot(fires,aes(ISI,area)) + geom_point() +stat_smooth(method="lm")
+ggplot(fires,aes(DC,area)) + geom_point() +stat_smooth(method="lm")
+ggplot(fires,aes(DMC,area)) + geom_point() +stat_smooth(method="lm")
+ggplot(fires,aes(FFMC,area)) + geom_point() +stat_smooth(method="lm")
+ggplot(fires,aes(Y,area)) + geom_point() +stat_smooth(method="lm")
+ggplot(fires,aes(X,area)) + geom_point() +stat_smooth(method="lm")
 
+```
+We have imposed a linear fit (with 95% confidence band in grey) to each of the pairs of variables to understand the relationship.There does not seem to be a strong linear relationship between any of the pairs (strongest appear to be with temperature). We can also see some outliers in the data. Please note, that there are instances where the response variable seems to fall below 0 - such as for area and FFMC. Once again, this may mean that the burned area was below 1 ha.
 
 ## Outliers
+
+We suspect outliers in some of the variables. Let's further test the theory out:
 
 ```{r}
 fires %>% 
@@ -192,7 +223,7 @@ fires %>%
   coord_flip()
 ```
 
-
+Variables such as RH, FFMC, DMC and DC seem to have outliers in the data.
 
 
 
@@ -209,7 +240,7 @@ fires %>% group_by(month) %>% summarize(n())
 
 ```{r, pltmiss}
 plot_missing(fires %>% dplyr::select(-area))
-#head(fires)
+head(fires)
 ```
 
 
@@ -295,17 +326,21 @@ X.test <- fires.clean[-partition, ]
 ```
 
 
-
-
-
 # Build Models
 
-Using all data gives R^2 of ~9%
+## Linear Modeling
+
+We have transformed our data to fulfill the assumptions of linear regression. We will first test out linear regression on our data.
+
+### Model 1
+
+Using all data gives R^2 of ~10%
 ```{r, model1}
 lm1 <- lm(X.train,formula=area ~ .)
 summary(lm1)
-
 ```
+
+### Model 2
 
 Using stepAIC() function gives us R^2 of 6%
 ```{r, model 2}
@@ -314,13 +349,17 @@ summary(stepAIC_lm)
 
 ```
 
+### Model 3
+
 ```{r model-3}
 small_fires <- X.train[X.train$area < 2,]
 small_lm1 <- glm.nb(small_fires,formula = area ~.)
 summary(small_lm1)
 ```
 
-If we get rid of fires with area of 0, then we get an R^2 of 14%
+### Model 4
+
+If we get rid of fires with area of 0, then we get an R^2 of 19%
 ```{r model-4}
 fires_over0 <- X.train[X.train$area > 0,]
 lm0 <- lm(area ~ .,data=fires_over0)
@@ -328,12 +367,69 @@ summary(lm0)
 
 ```
 
+## Regularization
+
+One thing to note from our linear models, is the difference between the adjusted r^2 and r^2 - this indicates that there is multicollinearity in our data (which we has observed with some of the IVs during EDA). This may result in overfitting i.e. overestimating some of the coefficients assigned to our predictors. Such a model, will not perform well in the unseen test data. Therefore, we perform regularization through ridge regression to overcome this issue.
+
+Ridge regression is an extension of linear regression where the loss function is modified to minimize the complexity of the model (Singh,2019). We will build the glmnet() package to build the regularized model.
+
+```{r,ridge}
+library(glmnet)
+x = as.matrix(X.train) # we need to convert our dataframes to a matrix to perform regularization
+y_train = X.train$area # highlighting the dependent variable
+
+x_test = as.matrix(X.test)
+y_test = X.test$area
+
+lambdas <- 10^seq(2, -3, by = -.1)
+ridge_reg = glmnet(x, y_train, nlambda = 25, alpha = 0, family = 'gaussian', lambda = lambdas)
+
+summary(ridge_reg)
+
+```
+
+One of the major differences between linear and regularized regression models is that the latter involves tuning a hyperparameter, lambda. for our model, we will see what the best lambda is.
+```{r,lambda}
+# Using cross validation glmnet
+cv_ridge <- cv.glmnet(x, y_train, alpha = 0, lambda = lambdas)
+optimal_lambda <- cv_ridge$lambda.min
+optimal_lambda
+```
+
+
+```{r,eval}
+# Compute R^2 from true and predicted values
+eval_results <- function(true, predicted, df) {
+  SSE <- sum((predicted - true)^2)
+  SST <- sum((true - mean(true))^2)
+  R_square <- 1 - SSE / SST
+  RMSE = sqrt(SSE/nrow(df))
+
+  
+  # Model performance metrics
+data.frame(
+  RMSE = RMSE,
+  Rsquare = R_square
+)
+  
+}
+
+# Prediction and evaluation on train data
+predictions_train <- predict(ridge_reg, s = optimal_lambda, newx = x)
+eval_results(y_train, predictions_train, X.train)
+
+# Prediction and evaluation on test data
+predictions_test <- predict(ridge_reg, s = optimal_lambda, newx = x_test)
+eval_results(y_test, predictions_test, X.test)
+```
+
+We can see that our r^2 for the regularized model is 0.99 and the RMSE between the the actual and predicted number is very low, for both the training and test data sets.
+
+
 
 
 # Select Models
-```{r model2}
 
-```
 
 
 # References  
